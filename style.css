@@ -1,0 +1,47 @@
+body {
+
+    background-image: url('background.jpg');
+    background-position: cover;
+    background-size: cover;
+
+      }
+    
+    
+::content{
+    width: 300 px;
+    height: 400 px;
+    text-align: center;
+}
+input[type=submit]
+{
+    background-color: rgb(101, 165, 42);
+    text-align: center;
+
+}
+p{
+    margin-top: 20%;
+    margin: 0;
+    margin-left: 10%;
+    
+}
+form{
+    background: #fff; 
+    margin-top: 20%;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    width: 350px;
+    margin: 100px auto;
+    
+}
+.options  {
+  margin-left: 30px; 
+  font-size: 14px;
+  text-decoration: none;
+  
+}
+.options {
+  display: flex;
+  align-items: center;
+  gap: 80px; 
+}
