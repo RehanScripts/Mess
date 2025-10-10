@@ -60,6 +60,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
     display: flex;
     min-height: 100vh;
+    margin: 0; /* Remove default UA margins to avoid page offsets */
 }
 
 /* ===== Sidebar ===== */
@@ -75,6 +76,12 @@ body {
     flex-direction: column;
     z-index: 1000;
     transition: transform 0.3s ease;
+    overflow-y: auto;
+}
+
+/* Sidebar visible on mobile when toggled */
+.sidebar.show {
+    transform: translateX(0) !important;
 }
 
 .sidebar-header {
@@ -192,6 +199,112 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
+}
+
+/* New header layout used by transactions/settings pages */
+.header .header-content {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.header .search-bar {
+    flex: 1 1 360px;
+    max-width: 520px;
+    min-width: 220px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--gray-100);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+}
+
+.header .search-bar svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+}
+
+.header .search-bar input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.icon-button {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.icon-button:hover {
+    background: var(--gray-100);
+}
+
+.icon-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--primary-blue);
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-primary);
+    line-height: 1;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--border-color);
+}
+
+.user-menu .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: var(--shadow-sm);
+}
+
+.user-menu .user-name {
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .menu-toggle {
@@ -521,6 +634,11 @@ body {
     /* Header mobile styles */
     .header {
         padding: 1rem 1.25rem;
+    }
+
+    .header .search-bar {
+        flex-basis: 0;
+        max-width: none;
     }
     
     .menu-toggle {

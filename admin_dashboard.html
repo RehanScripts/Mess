@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - MessMate</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    .admin-grid { display: grid; grid-template-columns: repeat(4, minmax(220px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .admin-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; box-shadow: var(--shadow-sm); }
+    .admin-card h3 { font-size: 0.95rem; color: var(--text-secondary); font-weight: 600; margin-bottom: .5rem; text-transform: uppercase; letter-spacing: .05em; }
+    .admin-card .value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); }
+    .section { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; }
+    .section h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
+    .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+    .btn { display: inline-flex; align-items: center; gap:.4rem; padding: .5rem .75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; }
+    .btn-primary { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .table { width:100%; border-collapse: collapse; }
+    .table th, .table td { text-align:left; padding:.75rem; border-top:1px solid var(--border-color); font-size:.95rem; }
+    .table thead th { background: var(--gray-100); border-top:none; font-size:.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing:.04em; }
+    .status-badge { padding:.25rem .5rem; border-radius: 999px; font-size:.75rem; font-weight:600; }
+    .status-paid { background: rgba(16,185,129,.15); color: var(--accent-green); }
+    .status-pending { background: rgba(245,158,11,.15); color: var(--accent-orange); }
+    .status-failed { background: rgba(239,68,68,.15); color: var(--accent-red); }
+    .split { display:grid; grid-template-columns: 2fr 1.2fr; gap: 1rem; }
+    .list { display:flex; flex-direction: column; gap:.5rem; }
+    .list-item { display:flex; justify-content: space-between; padding:.5rem .75rem; border:1px solid var(--border-color); border-radius:8px; }
+    canvas { width:100%; height:280px; background: #fff; border-radius: 10px; border: 1px solid var(--border-color); }
+    @media (max-width: 1100px) { .admin-grid{grid-template-columns: repeat(2,1fr);} .split{grid-template-columns:1fr;} }
+    @media (max-width: 640px) { .admin-grid{grid-template-columns: 1fr;} }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-logo">MessMate</h1>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="admin_dashboard.html" class="nav-item active">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Admin Dashboard</span>
+      </a>
+      <a href="admin_settings.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="index.html" class="nav-item logout">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="header">
+      <button class="menu-toggle" id="menuToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-title">Admin Dashboard</div>
+      <div class="user-profile">
+        <span class="user-name">Admin</span>
+        <div class="user-avatar">A</div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="page-header">
+        <h2 class="page-title">Admin Overview</h2>
+        <p class="page-subtitle">Manage students, meals, and finances from one place.</p>
+      </section>
+
+      <!-- 1. Overview Cards -->
+      <div class="admin-grid">
+        <div class="admin-card"><h3>Total Students</h3><div class="value" id="cardStudents">0</div></div>
+        <div class="admin-card"><h3>Meals Served Today</h3><div class="value" id="cardMeals">0</div></div>
+        <div class="admin-card"><h3>Total Revenue</h3><div class="value" id="cardRevenue">₹0</div></div>
+        <div class="admin-card"><h3>Pending Payments</h3><div class="value" id="cardPending">₹0</div></div>
+      </div>
+
+      <!-- 2. Recent Transactions Table -->
+      <div class="section">
+        <h3>Recent Transactions</h3>
+        <div class="toolbar">
+          <button class="btn">Refresh</button>
+          <button class="btn">Export CSV</button>
+        </div>
+        <div style="overflow:auto;">
+          <table class="table" id="txTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Student Name</th>
+                <th>Meal Type</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. Meal Management -->
+      <div class="section split">
+        <div>
+          <h3>Meal Management</h3>
+          <div class="toolbar">
+            <button class="btn-primary btn" id="saveMenu">Update Today's Menu</button>
+            <button class="btn btn" id="toggleBreakfast">Toggle Breakfast</button>
+            <button class="btn btn" id="toggleLunch">Toggle Lunch</button>
+            <button class="btn btn" id="toggleDinner">Toggle Dinner</button>
+          </div>
+          <div class="list">
+            <div class="list-item"><span>Breakfast Menu</span><span id="menuBreakfast">Poha, Tea</span></div>
+            <div class="list-item"><span>Lunch Menu</span><span id="menuLunch">Dal, Rice, Roti, Paneer</span></div>
+            <div class="list-item"><span>Dinner Menu</span><span id="menuDinner">Veg Biryani</span></div>
+          </div>
+        </div>
+        <div>
+          <h3>Selections Today</h3>
+          <div class="list">
+            <div class="list-item"><span>Breakfast</span><strong id="selBreakfast">0</strong></div>
+            <div class="list-item"><span>Lunch</span><strong id="selLunch">0</strong></div>
+            <div class="list-item"><span>Dinner</span><strong id="selDinner">0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. User Management -->
+      <div class="section split">
+        <div>
+          <h3>User Management</h3>
+          <div class="toolbar">
+            <button class="btn-primary btn" id="addStudent">Add Student</button>
+            <button class="btn btn" id="editStudent">Edit Details</button>
+            <button class="btn-danger btn" id="removeStudent">Remove</button>
+          </div>
+          <div class="list" id="studentList"></div>
+        </div>
+        <div>
+          <h3>Pending Payments</h3>
+          <div class="list" id="pendingList"></div>
+        </div>
+      </div>
+
+      <!-- 5. Reports & Analytics -->
+      <div class="section">
+        <h3>Reports & Analytics</h3>
+        <div class="toolbar">
+          <button class="btn">Last 30 days</button>
+          <button class="btn">This Year</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <canvas id="chartRevenue"></canvas>
+          <canvas id="chartMeals"></canvas>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // Simple dataset placeholders; swap with real APIs later
+    const state = {
+      overview: { students: 128, meals: 342, revenue: 245000, pending: 3800 },
+      transactions: [
+        { date: '2025-10-10', name: 'Aman Verma', meal: 'Lunch', amount: 80, status: 'Paid' },
+        { date: '2025-10-10', name: 'Priya Shah', meal: 'Dinner', amount: 90, status: 'Pending' },
+        { date: '2025-10-09', name: 'Rahul Mehta', meal: 'Breakfast', amount: 40, status: 'Paid' },
+        { date: '2025-10-09', name: 'Neha Singh', meal: 'Lunch', amount: 80, status: 'Failed' }
+      ],
+      selections: { breakfast: 110, lunch: 135, dinner: 97 },
+      students: [ 'Sayali Lonare', 'Aman Verma', 'Priya Shah', 'Rahul Mehta', 'Neha Singh' ],
+      pending: [ { name: 'Priya Shah', amount: 180 }, { name: 'Neha Singh', amount: 200 } ]
+    };
+
+    // Overview cards
+    document.getElementById('cardStudents').textContent = state.overview.students;
+    document.getElementById('cardMeals').textContent = state.overview.meals;
+    document.getElementById('cardRevenue').textContent = '₹' + state.overview.revenue.toLocaleString();
+    document.getElementById('cardPending').textContent = '₹' + state.overview.pending.toLocaleString();
+
+    // Transactions table
+    const tbody = document.querySelector('#txTable tbody');
+    state.transactions.forEach(t => {
+      const tr = document.createElement('tr');
+      const st = t.status.toLowerCase();
+      const badgeCls = st === 'paid' ? 'status-paid' : st === 'pending' ? 'status-pending' : 'status-failed';
+      tr.innerHTML = `<td>${t.date}</td><td>${t.name}</td><td>${t.meal}</td><td>₹${t.amount}</td><td><span class="status-badge ${badgeCls}">${t.status}</span></td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Meal selections
+    document.getElementById('selBreakfast').textContent = state.selections.breakfast;
+    document.getElementById('selLunch').textContent = state.selections.lunch;
+    document.getElementById('selDinner').textContent = state.selections.dinner;
+
+    // Students & pending lists
+    const studentList = document.getElementById('studentList');
+    state.students.forEach(n => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `<span>${n}</span><span class="text-muted">Active</span>`;
+      studentList.appendChild(div);
+    });
+    const pendingList = document.getElementById('pendingList');
+    state.pending.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `<span>${p.name}</span><strong>₹${p.amount}</strong>`;
+      pendingList.appendChild(div);
+    });
+
+    // Minimal charts (canvas) - simple line charts without external libs
+    function drawLineChart(canvasId, points, label) {
+      const c = document.getElementById(canvasId);
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      const w = c.width = c.clientWidth * window.devicePixelRatio;
+      const h = c.height = c.clientHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
+      ctx.fillStyle = '#111827';
+      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto';
+      ctx.fillText(label, 12, 18);
+      const pad = 28; const W = c.clientWidth - pad*2; const H = c.clientHeight - pad*2;
+      const min = Math.min(...points), max = Math.max(...points) || 1;
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      // grid
+      for (let i=0;i<=4;i++){ const y = pad + (H*i/4); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad+W, y); ctx.stroke(); }
+      // line
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
+      points.forEach((v, i) => {
+        const x = pad + (W * (i/(points.length-1||1)));
+        const y = pad + H - (H * ((v - min) / (max - min || 1)));
+        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+    drawLineChart('chartRevenue', [12,14,11,18,22,28,24,30,26,35,38,42], 'Monthly Revenue (₹k)');
+    drawLineChart('chartMeals', [320,340,300,360,380,400,420,410,390,440,460,480], 'Meals Served');
+
+    // Basic buttons
+    document.getElementById('saveMenu').addEventListener('click', ()=> alert('Menu saved (placeholder).'));
+    document.getElementById('toggleBreakfast').addEventListener('click', ()=> alert('Breakfast toggled (placeholder).'));
+    document.getElementById('toggleLunch').addEventListener('click', ()=> alert('Lunch toggled (placeholder).'));
+    document.getElementById('toggleDinner').addEventListener('click', ()=> alert('Dinner toggled (placeholder).'));
+    document.getElementById('addStudent').addEventListener('click', ()=> alert('Add student (placeholder).'));
+    document.getElementById('editStudent').addEventListener('click', ()=> alert('Edit student (placeholder).'));
+    document.getElementById('removeStudent').addEventListener('click', ()=> alert('Remove student (placeholder).'));
+
+    // Logout: clear auth cookie then redirect
+    document.querySelector('.sidebar-footer .logout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await fetch('/logout', { method: 'POST' }); } catch {}
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
