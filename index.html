@@ -26,7 +26,13 @@
 <br>
 <center> Not Registered?  <a href="signup.html">Sign up</a></center> 
 <br>
-<!-- Admin prefill UI removed -->
+<center>
+    <button type="button" id="adminModeToggle" style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; background:#f3f4f6; cursor:pointer;">Admin Login</button>
+    <div id="adminHint" style="display:none; font-size:12px; color:#374151; margin-top:6px;">Admin mode enabled. Use your admin credentials.</div>
+    <div id="adminError" style="display:none; font-size:12px; color:#b91c1c; margin-top:6px;">Only admin users can access the admin dashboard.</div>
+  
+  
+</center>
 
      </form>
 
@@ -60,7 +66,28 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     }
 });
 
-// Admin prefill helper removed
+// Admin mode toggle (no prefilled credentials)
+(function(){
+  const toggleBtn = document.getElementById('adminModeToggle');
+  const adminHint = document.getElementById('adminHint');
+  const adminErr = document.getElementById('adminError');
+  const heading = document.querySelector('#loginForm h2');
+  const userInput = document.getElementById('username');
+  const passInput = document.getElementById('password');
+  let adminMode = false;
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      adminMode = !adminMode;
+      toggleBtn.textContent = adminMode ? 'User Login' : 'Admin Login';
+      if (heading) heading.textContent = adminMode ? 'ADMIN LOGIN' : 'SMART MESS MANAGEMENT SYSTEM';
+      if (userInput) userInput.placeholder = adminMode ? 'Enter admin username' : 'Enter your username';
+      if (passInput) passInput.placeholder = adminMode ? 'Enter admin password' : 'Enter your password';
+      adminHint.style.display = adminMode ? 'block' : 'none';
+      adminErr.style.display = 'none';
+    });
+  }
+})();
 </script>
 </body>
 </html>
