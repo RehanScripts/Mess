@@ -627,49 +627,5 @@ function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// ===== Sidebar Navigation Toggle =====
-// Ensures sidebar visibility and toggle functionality across all pages
-
-// Sidebar toggle functionality
-function initSidebarToggle() {
-    const sidebar = document.getElementById('sidebar');
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    
-    // Mobile menu toggle
-    if (menuToggle) {
-        menuToggle.addEventListener('click', () => {
-            if (sidebar) {
-                sidebar.classList.toggle('active');
-            }
-        });
-    }
-    
-    // Sidebar close button
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', () => {
-            if (sidebar) {
-                sidebar.classList.remove('active');
-            }
-        });
-    }
-    
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768) {
-            if (sidebar && 
-                sidebar.classList.contains('active') && 
-                !sidebar.contains(e.target) && 
-                e.target !== menuToggle &&
-                !menuToggle?.contains(e.target)) {
-                sidebar.classList.remove('active');
-            }
-        }
-    });
-}
-
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initSidebarToggle();
-    init();
-});
+document.addEventListener('DOMContentLoaded', init);
