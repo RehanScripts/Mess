@@ -74,6 +74,15 @@ db.serialize(() => {
         else console.log('Admin user ready: admin / admin123');
       });
       a.finalize();
+
+      // Normalize roles for existing rows that may have NULL due to prior migrations
+      db.run("UPDATE users SET role='user' WHERE role IS NULL", (e3) => {
+        if (e3) console.error('Normalize NULL roles error:', e3);
+      });
+      // Ensure the built-in admin account has the correct 'admin' role
+      db.run("UPDATE users SET role='admin' WHERE lower(username)='admin' OR lower(email)='admin@example.com'", (e4) => {
+        if (e4) console.error('Ensure admin role error:', e4);
+      });
     });
   };
 
@@ -195,6 +204,18 @@ app.get('/_users', (req, res) => {
     if (err) return res.status(500).json({ error: 'db_error' });
     res.json(rows);
   });
+});
+
+// Who am I - returns the currently authenticated user from JWT cookie
+app.get('/_me', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ authenticated: false });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return res.json({ authenticated: true, user: decoded });
+  } catch (e) {
+    return res.status(401).json({ authenticated: false });
+  }
 });
 
 // Logout clears cookie
