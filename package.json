@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "health": "node -e \"require('http').get('http://localhost:'+(process.env.PORT||3000)+'/_health',res=>res.pipe(process.stdout))\"",
+    "kill-ports": "bash -lc 'lsof -ti:3000-3010 | xargs -r kill -9'"
   },
   "author": "",
   "license": "MIT",

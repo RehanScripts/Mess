@@ -24,6 +24,11 @@ cd /Users/rehanraispinjari/DT03/mess
 npm start
 ```
 
+Health check (optional):
+```bash
+npm run health
+```
+
 ## 🌐 Access the Application
 
 Once the server is running, open your browser and navigate to:
@@ -88,6 +93,25 @@ kill -9 $(lsof -ti:3000)
 ./start.sh
 ```
 
+If you're not in the right folder and see an error like:
+
+```
+Error: Cannot find module '/Users/rehanraispinjari/DT03/server.js'
+```
+
+Run from the correct directory:
+
+```bash
+cd /Users/rehanraispinjari/DT03/mess
+node server.js
+```
+
+Or use an absolute path:
+
+```bash
+node /Users/rehanraispinjari/DT03/mess/server.js
+```
+
 ### Missing dependencies
 ```bash
 cd /Users/rehanraispinjari/DT03/mess
@@ -100,12 +124,11 @@ npm install
 3. Check browser console for errors (F12)
 
 ## 📝 Recent Updates
-
-- ✅ Fixed sidebar persistence across all pages
-- ✅ Added complete navigation system
-- ✅ Implemented state management with localStorage
-- ✅ Enhanced responsive design for mobile
-- ✅ Added system status page
+- ✅ Database-backed login with bcrypt (users table)
+- ✅ Admin role with protected admin dashboard and settings
+- ✅ JWT cookie-based auth; logout clears cookie
+- ✅ Fixed sidebar persistence and header layout across pages
+- ✅ Health endpoint and port fallback on startup
 - ✅ Created startup script for easy deployment
 
 ## 🎯 Usage Instructions
@@ -116,12 +139,14 @@ npm install
 4. **Book Meals**: Go to Book Meals page and select your meals
 5. **View History**: Check transactions and upcoming bookings
 
-## 🔐 Database
+## 🔐 Database & Auth
 
-The application uses SQLite for data storage:
-- Location: `data/db.sqlite`
-- Tables: logins, bookings, transactions
-- Automatically created on first run
+- SQLite database at `data/db.sqlite`
+- Tables: `users` (with roles), `logins` (audit)
+- Default users are seeded on first run:
+   - Admin: `admin` / `admin123`
+   - Student: `student` / `password123`
+- Login sets an httpOnly JWT cookie; admins are redirected to `admin_dashboard.html`
 
 ## 🌟 Key Features Explained
 
@@ -170,23 +195,9 @@ MIT
 **Status**: ✅ All systems operational
 **Version**: 1.0.0
 
-This repository contains a small static website (login, signup, dashboard) and a minimal Node.js backend that accepts any login credentials and redirects the user to the dashboard. It also stores login attempts in a local SQLite database.
-
-Quick start:
-
-1. Install dependencies
-
-   npm install
-
-2. Start the server
-
-   npm start
-
-3. Open http://localhost:3000 in your browser and use the login form. Any username/password will be accepted and redirect to the dashboard.
-
 Developer endpoints:
 
-- GET /_logins - returns recent login attempts (for debugging)
-
-Notes:
-- This is intentionally simple; do not use in production without proper authentication, password hashing, and security.
+- GET `/_health` – server health
+- GET `/_users` – list users (debug)
+- GET `/_logins` – recent login attempts (audit)
+- GET `/_me` – current authenticated user (from JWT cookie)
