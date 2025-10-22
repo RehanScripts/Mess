@@ -28,12 +28,13 @@ npm start
 
 Once the server is running, open your browser and navigate to:
 
-- **Home Page**: http://localhost:3000/
+- **Home Page (Login)**: http://localhost:3000/
 - **Dashboard**: http://localhost:3000/dashboard.html
 - **Book Meals**: http://localhost:3000/book_meals.html
-- **System Status**: http://localhost:3000/status.html
 - **Profile**: http://localhost:3000/profile.html
 - **Transactions**: http://localhost:3000/transactions.html
+- **Settings**: http://localhost:3000/settings.html
+- **Admin Dashboard**: http://localhost:3000/admin_dashboard.html (admin/admin123)
 
 ## 📋 Features
 
@@ -58,20 +59,33 @@ Once the server is running, open your browser and navigate to:
 
 ```
 mess/
-├── server.js              # Express server
-├── start.sh              # Startup script
-├── common.js             # Shared JavaScript utilities
-├── dashboard.html        # Main dashboard
-├── book_meals.html       # Meal booking interface
-├── book_meals.js         # Booking functionality
-├── book_meals.css        # Booking styles
-├── dashboard.css         # Global styles
-├── profile.html          # User profile
-├── transactions.html     # Transaction history
-├── status.html           # System status page
-├── data/                 # Database directory
-│   └── db.sqlite        # SQLite database
-└── node_modules/         # Dependencies
+├── server.js                    # Express server with REST API
+├── start.sh                     # Startup script
+├── common.js                    # Shared JavaScript utilities
+├── index.html                   # Login page
+├── signup.html                  # Registration page
+├── dashboard.html               # Student dashboard (main)
+├── book_meals.html              # Meal booking interface
+├── book_meals.js                # Booking functionality
+├── book_meals.css               # Booking styles
+├── dashboard.css                # Global styles
+├── profile.html                 # User profile
+├── profile.js                   # Profile functionality
+├── transactions.html            # Transaction history
+├── transactions.js              # Transaction functionality
+├── settings.html                # User settings
+├── settings.js                  # Settings functionality
+├── admin_dashboard.html         # Admin dashboard with charts
+├── admin_settings.html          # Admin settings
+├── data/                        # Database directory
+│   └── db.sqlite               # SQLite database
+└── Documentation/
+    ├── README.md               # Project documentation
+    ├── CHARTS_IMPLEMENTATION.md
+    ├── DATA_SYNC_IMPLEMENTATION.md
+    ├── SETTINGS_IMPLEMENTATION.md
+    ├── TRANSACTIONS_IMPLEMENTATION.md
+    └── CHARTS_SUMMARY.md
 ```
 
 ## 🔧 Troubleshooting
@@ -100,12 +114,13 @@ npm install
 3. Check browser console for errors (F12)
 
 ## 📝 Recent Updates
-- ✅ Fixed sidebar persistence across all pages
-- ✅ Added complete navigation system
-- ✅ Implemented state management with localStorage
-- ✅ Enhanced responsive design for mobile
-- ✅ Added system status page
-- ✅ Created startup script for easy deployment
+- ✅ Professional real-time charts in admin dashboard (Chart.js)
+- ✅ Data synchronization between admin and user pages
+- ✅ Menu management with CRUD operations
+- ✅ Modern login page design
+- ✅ Complete REST API with authentication
+- ✅ Responsive design for all devices
+- ✅ Auto-refresh functionality for live updates
 
 ## 🎯 Usage Instructions
 
@@ -119,34 +134,49 @@ npm install
 
 The application uses SQLite for data storage:
 - Location: `data/db.sqlite`
-- Tables: logins, bookings, transactions
+- Tables: users, menu_items, bookings, transactions, logins
 - Automatically created on first run
+- Seeded with sample menu items
 
 ## 🌟 Key Features Explained
 
-### Sidebar Persistence
-The sidebar remains visible when navigating between pages using:
-- Fixed CSS positioning
-- Consistent HTML structure
-- common.js for state management
+### Admin Dashboard
+- Real-time revenue distribution pie chart
+- Sales trends line chart with period selection
+- Detailed analysis with multi-metric charts
+- Menu management with CRUD operations
+- User and booking statistics
+- Auto-refresh every 60 seconds
+
+### Data Synchronization
+- Admin changes reflect on user pages in real-time
+- Auto-refresh mechanism (30-60 seconds)
+- Live menu updates without page reload
+- Seamless data flow between admin and users
 
 ### Meal Booking
-- Date selector (7 days ahead)
+- Dynamic menu fetched from database
 - Meal type tabs (Breakfast, Lunch, Dinner)
-- Quantity controls
 - Real-time price calculation
-- Confirmation modal
+- Professional UI with images and descriptions
 
 ### Responsive Design
 - Desktop: Full sidebar + content
-- Mobile: Collapsible sidebar with overlay
+- Tablet/Mobile: Collapsible sidebar with overlay
 - Touch-friendly controls
+- Charts adapt to screen size
 
 ## 📊 System Requirements
 
 - Node.js v14+ 
 - npm v6+
 - Modern web browser (Chrome, Firefox, Safari, Edge)
+- SQLite3
+
+## 🔐 Default Credentials
+
+- **Student**: `student` / `password123`
+- **Admin**: `admin` / `admin123`
 
 ## 🐛 Known Issues
 
@@ -154,10 +184,12 @@ None currently! All systems operational.
 
 ## 📞 Support
 
-For issues or questions, check:
-- STATUS_REPORT.md - Current system status
-- SIDEBAR_IMPLEMENTATION.md - Technical documentation
-- SIDEBAR_FIX_SUMMARY.md - Recent fixes
+For detailed documentation, check:
+- **CHARTS_IMPLEMENTATION.md** - Charts and analytics documentation
+- **DATA_SYNC_IMPLEMENTATION.md** - Data synchronization guide
+- **SETTINGS_IMPLEMENTATION.md** - Settings functionality
+- **TRANSACTIONS_IMPLEMENTATION.md** - Transaction features
+- **CHARTS_SUMMARY.md** - Quick charts reference
 
 ## 📜 License
 
