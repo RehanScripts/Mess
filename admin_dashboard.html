@@ -29,6 +29,36 @@
     canvas { width:100%; height:280px; background: #fff; border-radius: 10px; border: 1px solid var(--border-color); }
     @media (max-width: 1100px) { .admin-grid{grid-template-columns: repeat(2,1fr);} .split{grid-template-columns:1fr;} }
     @media (max-width: 640px) { .admin-grid{grid-template-columns: 1fr;} }
+    
+    /* Menu Item Card Styles */
+    .menu-item-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; transition: all 0.2s; }
+    .menu-item-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .menu-item-img { width: 100%; height: 160px; object-fit: cover; background: var(--gray-100); }
+    .menu-item-body { padding: 1rem; }
+    .menu-item-title { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; color: var(--text-primary); }
+    .menu-item-desc { font-size: .85rem; color: var(--text-secondary); margin-bottom: .75rem; line-height: 1.4; }
+    .menu-item-price { font-size: 1.25rem; font-weight: 700; color: var(--primary-blue); margin-bottom: .75rem; }
+    .menu-item-actions { display: flex; gap: .5rem; }
+    .menu-item-actions .btn { flex: 1; font-size: .85rem; padding: .4rem .6rem; }
+    .unavailable { opacity: 0.6; }
+    .unavailable::after { content: 'Unavailable'; position: absolute; top: 10px; right: 10px; background: #ef4444; color: #fff; padding: .25rem .5rem; border-radius: 4px; font-size: .75rem; }
+    .meal-tab { padding: .75rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: all 0.2s; }
+    .meal-tab.active { color: var(--primary-blue); border-bottom-color: var(--primary-blue); }
+    .meal-tab:hover { color: var(--primary-blue); }
+    
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--bg-primary); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header h3 { font-size: 1.25rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); }
+    .form-field { margin-bottom: 1rem; }
+    .form-field label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: .5rem; color: var(--text-primary); }
+    .form-field input, .form-field textarea, .form-field select { width: 100%; padding: .75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: .95rem; }
+    .form-field textarea { min-height: 80px; resize: vertical; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
+    .form-actions .btn { flex: 1; }
   </style>
 </head>
 <body>
@@ -129,7 +159,7 @@
       <!-- 3. Meal Management -->
       <div class="section split">
         <div>
-          <h3>Meal Management</h3>
+          <h3>Today's Menu Configuration</h3>
           <div class="toolbar">
             <button class="btn-primary btn" id="saveMenu">Update Today's Menu</button>
             <button class="btn btn" id="toggleBreakfast">Toggle Breakfast</button>
@@ -149,6 +179,26 @@
             <div class="list-item"><span>Lunch</span><strong id="selLunch">0</strong></div>
             <div class="list-item"><span>Dinner</span><strong id="selDinner">0</strong></div>
           </div>
+        </div>
+      </div>
+
+      <!-- 3.5 Menu Items Management -->
+      <div class="section">
+        <h3>Menu Items Management</h3>
+        <div class="toolbar">
+          <button class="btn-primary btn" id="addMenuItem">Add New Menu Item</button>
+          <button class="btn btn" id="refreshMenu">Refresh Menu</button>
+        </div>
+        
+        <!-- Meal Type Tabs -->
+        <div style="display:flex; gap:.5rem; margin: 1rem 0; border-bottom: 2px solid var(--border-color);">
+          <button class="meal-tab active" data-meal="breakfast">Breakfast</button>
+          <button class="meal-tab" data-meal="lunch">Lunch</button>
+          <button class="meal-tab" data-meal="dinner">Dinner</button>
+        </div>
+        
+        <div id="menuItemsContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
+          <!-- Menu items will be loaded here -->
         </div>
       </div>
 
@@ -182,6 +232,53 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- Menu Item Modal -->
+  <div id="menuItemModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add Menu Item</h3>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      <form id="menuItemForm">
+        <input type="hidden" id="itemId">
+        <div class="form-field">
+          <label for="mealType">Meal Type *</label>
+          <select id="mealType" required>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="itemTitle">Title *</label>
+          <input type="text" id="itemTitle" placeholder="e.g., Poha" required>
+        </div>
+        <div class="form-field">
+          <label for="itemDescription">Description</label>
+          <textarea id="itemDescription" placeholder="Describe the dish..."></textarea>
+        </div>
+        <div class="form-field">
+          <label for="itemImage">Image URL</label>
+          <input type="url" id="itemImage" placeholder="https://example.com/image.jpg">
+        </div>
+        <div class="form-field">
+          <label for="itemPrice">Price (₹) *</label>
+          <input type="number" id="itemPrice" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+        <div class="form-field">
+          <label>
+            <input type="checkbox" id="itemAvailable" checked>
+            Available
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-primary btn" id="saveBtn">Save Item</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="common.js"></script>
@@ -275,6 +372,240 @@
     document.getElementById('addStudent').addEventListener('click', ()=> alert('Add student (placeholder).'));
     document.getElementById('editStudent').addEventListener('click', ()=> alert('Edit student (placeholder).'));
     document.getElementById('removeStudent').addEventListener('click', ()=> alert('Remove student (placeholder).'));
+
+    // ========== MENU ITEMS MANAGEMENT ==========
+    let currentMealType = 'breakfast';
+    let menuItems = [];
+
+    // Fetch and display menu items
+    async function loadMenuItems(mealType = currentMealType) {
+      try {
+        const res = await fetch(`/api/menu-items?meal_type=${mealType}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          menuItems = data.items;
+          displayMenuItems(data.items);
+        } else {
+          console.error('Failed to load menu items');
+        }
+      } catch (err) {
+        console.error('Error loading menu items:', err);
+      }
+    }
+
+    // Display menu items in cards
+    function displayMenuItems(items) {
+      const container = document.getElementById('menuItemsContainer');
+      container.innerHTML = '';
+      
+      if (items.length === 0) {
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:var(--text-secondary); padding: 2rem;">No menu items found. Click "Add New Menu Item" to create one.</p>';
+        return;
+      }
+      
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'menu-item-card' + (item.available ? '' : ' unavailable');
+        card.style.position = 'relative';
+        
+        card.innerHTML = `
+          <img src="${item.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" 
+               alt="${item.title}" 
+               class="menu-item-img"
+               onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+          <div class="menu-item-body">
+            <div class="menu-item-title">${item.title}</div>
+            <div class="menu-item-desc">${item.description || 'No description'}</div>
+            <div class="menu-item-price">₹${parseFloat(item.price).toFixed(2)}</div>
+            <div class="menu-item-actions">
+              <button class="btn btn-primary" onclick="editMenuItem(${item.id})">Edit</button>
+              <button class="btn ${item.available ? '' : 'btn-primary'}" onclick="toggleAvailability(${item.id}, ${item.available})">
+                ${item.available ? 'Disable' : 'Enable'}
+              </button>
+              <button class="btn btn-danger" onclick="deleteMenuItem(${item.id})">Delete</button>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(card);
+      });
+    }
+
+    // Meal type tabs
+    document.querySelectorAll('.meal-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentMealType = this.dataset.meal;
+        loadMenuItems(currentMealType);
+      });
+    });
+
+    // Modal handling
+    const modal = document.getElementById('menuItemModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const menuForm = document.getElementById('menuItemForm');
+    
+    document.getElementById('addMenuItem').addEventListener('click', () => {
+      modalTitle.textContent = 'Add New Menu Item';
+      menuForm.reset();
+      document.getElementById('itemId').value = '';
+      document.getElementById('mealType').value = currentMealType;
+      document.getElementById('itemAvailable').checked = true;
+      modal.classList.add('active');
+    });
+    
+    document.getElementById('closeModal').addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+    
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+
+    // Edit menu item
+    window.editMenuItem = async function(id) {
+      try {
+        const res = await fetch(`/api/menu-items/${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const item = data.item;
+          modalTitle.textContent = 'Edit Menu Item';
+          document.getElementById('itemId').value = item.id;
+          document.getElementById('mealType').value = item.meal_type;
+          document.getElementById('itemTitle').value = item.title;
+          document.getElementById('itemDescription').value = item.description || '';
+          document.getElementById('itemImage').value = item.image_url || '';
+          document.getElementById('itemPrice').value = item.price;
+          document.getElementById('itemAvailable').checked = item.available;
+          modal.classList.add('active');
+        }
+      } catch (err) {
+        console.error('Error loading menu item:', err);
+        alert('Failed to load menu item');
+      }
+    };
+
+    // Toggle availability
+    window.toggleAvailability = async function(id, currentAvailable) {
+      try {
+        const res = await fetch(`/api/menu-items/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ available: currentAvailable ? 0 : 1 })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          loadMenuItems(currentMealType);
+        } else {
+          alert('Failed to update availability');
+        }
+      } catch (err) {
+        console.error('Error toggling availability:', err);
+        alert('Failed to update availability');
+      }
+    };
+
+    // Delete menu item
+    window.deleteMenuItem = async function(id) {
+      if (!confirm('Are you sure you want to delete this menu item?')) return;
+      
+      try {
+        const res = await fetch(`/api/menu-items/${id}`, {
+          method: 'DELETE'
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          loadMenuItems(currentMealType);
+        } else {
+          alert('Failed to delete menu item');
+        }
+      } catch (err) {
+        console.error('Error deleting menu item:', err);
+        alert('Failed to delete menu item');
+      }
+    };
+
+    // Save menu item (create or update)
+    menuForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('itemId').value;
+      const itemData = {
+        meal_type: document.getElementById('mealType').value,
+        title: document.getElementById('itemTitle').value,
+        description: document.getElementById('itemDescription').value,
+        image_url: document.getElementById('itemImage').value,
+        price: parseFloat(document.getElementById('itemPrice').value),
+        available: document.getElementById('itemAvailable').checked ? 1 : 0
+      };
+      
+      try {
+        const url = id ? `/api/menu-items/${id}` : '/api/menu-items';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(itemData)
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          modal.classList.remove('active');
+          loadMenuItems(currentMealType);
+        } else {
+          alert('Failed to save menu item: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Error saving menu item:', err);
+        alert('Failed to save menu item');
+      }
+    });
+
+    // Refresh menu button
+    document.getElementById('refreshMenu').addEventListener('click', () => {
+      loadMenuItems(currentMealType);
+    });
+
+    // Load stats from API
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        const data = await res.json();
+        
+        if (data.success) {
+          const stats = data.stats;
+          document.getElementById('cardStudents').textContent = stats.students || 0;
+          document.getElementById('cardMeals').textContent = stats.mealsToday || 0;
+          document.getElementById('cardRevenue').textContent = '₹' + (stats.revenue || 0).toLocaleString();
+          document.getElementById('cardPending').textContent = '₹' + (stats.pending || 0).toLocaleString();
+          
+          if (stats.mealCounts) {
+            document.getElementById('selBreakfast').textContent = stats.mealCounts.breakfast || 0;
+            document.getElementById('selLunch').textContent = stats.mealCounts.lunch || 0;
+            document.getElementById('selDinner').textContent = stats.mealCounts.dinner || 0;
+          }
+        }
+      } catch (err) {
+        console.error('Error loading stats:', err);
+      }
+    }
+
+    // Initial load
+    loadMenuItems();
+    loadStats();
 
     // Logout: clear auth cookie then redirect
     document.querySelector('.sidebar-footer .logout')?.addEventListener('click', async (e) => {

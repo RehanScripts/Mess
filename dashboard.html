@@ -167,6 +167,28 @@
             <!-- Recent Bookings -->
             <section class="recent-bookings">
                 <div class="section-header">
+                    <h3 class="section-title">Today's Menu</h3>
+                    <p class="section-subtitle">Available meals for today</p>
+                </div>
+
+                <div id="menuContainer" style="margin-top: 1.5rem;">
+                    <!-- Menu tabs -->
+                    <div style="display:flex; gap:.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb;">
+                        <button class="menu-tab active" data-meal="breakfast" style="padding: .75rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 600; color: #6b7280; transition: all 0.2s;">Breakfast</button>
+                        <button class="menu-tab" data-meal="lunch" style="padding: .75rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 600; color: #6b7280; transition: all 0.2s;">Lunch</button>
+                        <button class="menu-tab" data-meal="dinner" style="padding: .75rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 600; color: #6b7280; transition: all 0.2s;">Dinner</button>
+                    </div>
+                    
+                    <!-- Menu items grid -->
+                    <div id="menuItemsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                        <!-- Menu items will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Bookings History -->
+            <section class="recent-bookings" style="margin-top: 2rem;">
+                <div class="section-header">
                     <h3 class="section-title">Recent Bookings</h3>
                     <p class="section-subtitle">Your latest meal bookings and transactions</p>
                 </div>
@@ -250,6 +272,95 @@
                 }
             }
         });
+
+        // ========== MENU ITEMS LOADING ==========
+        let currentMealType = 'breakfast';
+
+        // Fetch and display menu items
+        async function loadMenuItems(mealType = currentMealType) {
+            try {
+                const res = await fetch(`/api/menu-items?meal_type=${mealType}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    displayMenuItems(data.items);
+                } else {
+                    console.error('Failed to load menu items');
+                }
+            } catch (err) {
+                console.error('Error loading menu items:', err);
+            }
+        }
+
+        // Display menu items in cards
+        function displayMenuItems(items) {
+            const container = document.getElementById('menuItemsGrid');
+            container.innerHTML = '';
+            
+            // Filter only available items
+            const availableItems = items.filter(item => item.available);
+            
+            if (availableItems.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#6b7280; padding: 2rem;">No menu items available for ' + currentMealType + ' today.</p>';
+                return;
+            }
+            
+            availableItems.forEach(item => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; transition: all 0.2s; cursor: pointer;';
+                
+                card.innerHTML = `
+                    <img src="${item.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" 
+                         alt="${item.title}" 
+                         style="width: 100%; height: 180px; object-fit: cover; background: #f3f4f6;"
+                         onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                    <div style="padding: 1rem;">
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: .5rem; color: #111827;">${item.title}</div>
+                        <div style="font-size: .9rem; color: #6b7280; margin-bottom: .75rem; line-height: 1.4; min-height: 2.8em;">${item.description || 'Delicious meal'}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                            <div style="font-size: 1.35rem; font-weight: 700; color: #3b82f6;">₹${parseFloat(item.price).toFixed(2)}</div>
+                            <a href="book_meals.html" style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #fff; padding: .5rem 1rem; border-radius: 8px; text-decoration: none; font-size: .9rem; font-weight: 600;">Book Now</a>
+                        </div>
+                    </div>
+                `;
+                
+                card.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
+                    this.style.transform = 'translateY(-4px)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = 'none';
+                    this.style.transform = 'translateY(0)';
+                });
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Meal type tabs
+        document.querySelectorAll('.menu-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.menu-tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.style.color = '#6b7280';
+                    t.style.borderBottomColor = 'transparent';
+                });
+                this.classList.add('active');
+                this.style.color = '#4F46E5';
+                this.style.borderBottomColor = '#4F46E5';
+                currentMealType = this.dataset.meal;
+                loadMenuItems(currentMealType);
+            });
+        });
+
+        // Initial load
+        loadMenuItems();
+        
+        // Refresh menu every 30 seconds to sync with admin changes
+        setInterval(() => {
+            loadMenuItems(currentMealType);
+        }, 30000);
     </script>
     
     <!-- Common Sidebar Persistence Script -->

@@ -38,6 +38,46 @@ db.serialize(() => {
     role TEXT DEFAULT 'user',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // menu items table
+  db.run(`CREATE TABLE IF NOT EXISTS menu_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    meal_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    price REAL NOT NULL,
+    available BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // bookings table
+  db.run(`CREATE TABLE IF NOT EXISTS bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    booking_date DATE NOT NULL,
+    meal_type TEXT NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    total_amount REAL NOT NULL,
+    status TEXT DEFAULT 'confirmed',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
+
+  // transactions table
+  db.run(`CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    booking_id INTEGER,
+    amount REAL NOT NULL,
+    transaction_type TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (booking_id) REFERENCES bookings(id)
+  )`);
+
   // Migration: add role column if missing, then seed
   const continueAfterMigration = () => {
     // Seed a default user if none exists
@@ -82,6 +122,37 @@ db.serialize(() => {
       // Ensure the built-in admin account has the correct 'admin' role
       db.run("UPDATE users SET role='admin' WHERE lower(username)='admin' OR lower(email)='admin@example.com'", (e4) => {
         if (e4) console.error('Ensure admin role error:', e4);
+      });
+
+      // Seed menu items if empty
+      db.get('SELECT COUNT(*) as cnt FROM menu_items', (err, row) => {
+        if (err) {
+          console.error('Menu items count error:', err);
+          return;
+        }
+        if (row && row.cnt === 0) {
+          const menuItems = [
+            { meal_type: 'breakfast', title: 'Poha', description: 'Traditional flattened rice with spices', image_url: 'https://images.unsplash.com/photo-1589301760014-ad5c127e0f06?w=400', price: 40 },
+            { meal_type: 'breakfast', title: 'Idli Sambar', description: 'Steamed rice cakes with lentil curry', image_url: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=400', price: 50 },
+            { meal_type: 'breakfast', title: 'Paratha with Curd', description: 'Stuffed flatbread with yogurt', image_url: 'https://images.unsplash.com/photo-1589308078059-be1415eab004?w=400', price: 45 },
+            { meal_type: 'lunch', title: 'Dal Rice Combo', description: 'Lentil curry with steamed rice and roti', image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400', price: 80 },
+            { meal_type: 'lunch', title: 'Paneer Curry', description: 'Cottage cheese in rich gravy with rice', image_url: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400', price: 100 },
+            { meal_type: 'lunch', title: 'Veg Thali', description: 'Complete meal with dal, sabzi, roti, rice', image_url: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=400', price: 90 },
+            { meal_type: 'dinner', title: 'Veg Biryani', description: 'Aromatic rice with mixed vegetables', image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400', price: 90 },
+            { meal_type: 'dinner', title: 'Chole Bhature', description: 'Spicy chickpeas with fried bread', image_url: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=400', price: 85 },
+            { meal_type: 'dinner', title: 'Rajma Chawal', description: 'Kidney beans curry with rice', image_url: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400', price: 70 }
+          ];
+          
+          const stmt = db.prepare('INSERT INTO menu_items (meal_type, title, description, image_url, price) VALUES (?, ?, ?, ?, ?)');
+          menuItems.forEach(item => {
+            stmt.run([item.meal_type, item.title, item.description, item.image_url, item.price], (e) => {
+              if (e) console.error('Seed menu item error:', e);
+            });
+          });
+          stmt.finalize(() => {
+            console.log('Seeded menu items successfully');
+          });
+        }
       });
     });
   };
@@ -227,6 +298,289 @@ app.post('/logout', (req, res) => {
 // Health endpoint
 app.get('/_health', (req, res) => {
   res.json({ ok: true, timestamp: Date.now() });
+});
+
+// ========== MENU ITEMS API ==========
+
+// Get all menu items
+app.get('/api/menu-items', (req, res) => {
+  const meal_type = req.query.meal_type;
+  let sql = 'SELECT * FROM menu_items WHERE 1=1';
+  const params = [];
+  
+  if (meal_type) {
+    sql += ' AND meal_type = ?';
+    params.push(meal_type);
+  }
+  
+  sql += ' ORDER BY meal_type, id';
+  
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error('Get menu items error:', err);
+      return res.status(500).json({ success: false, error: 'db_error' });
+    }
+    res.json({ success: true, items: rows });
+  });
+});
+
+// Get single menu item
+app.get('/api/menu-items/:id', (req, res) => {
+  const id = req.params.id;
+  db.get('SELECT * FROM menu_items WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Get menu item error:', err);
+      return res.status(500).json({ success: false, error: 'db_error' });
+    }
+    if (!row) {
+      return res.status(404).json({ success: false, error: 'not_found' });
+    }
+    res.json({ success: true, item: row });
+  });
+});
+
+// Create new menu item (admin only)
+app.post('/api/menu-items', (req, res) => {
+  // Simple auth check
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  
+  const { meal_type, title, description, image_url, price, available } = req.body;
+  
+  if (!meal_type || !title || price === undefined) {
+    return res.status(400).json({ success: false, error: 'missing_fields' });
+  }
+  
+  const stmt = db.prepare('INSERT INTO menu_items (meal_type, title, description, image_url, price, available) VALUES (?, ?, ?, ?, ?, ?)');
+  stmt.run([meal_type, title, description || '', image_url || '', price, available !== undefined ? available : 1], function(err) {
+    if (err) {
+      console.error('Create menu item error:', err);
+      return res.status(500).json({ success: false, error: 'db_error' });
+    }
+    res.json({ success: true, id: this.lastID });
+  });
+  stmt.finalize();
+});
+
+// Update menu item (admin only)
+app.put('/api/menu-items/:id', (req, res) => {
+  // Simple auth check
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  
+  const id = req.params.id;
+  const { meal_type, title, description, image_url, price, available } = req.body;
+  
+  const updates = [];
+  const params = [];
+  
+  if (meal_type !== undefined) {
+    updates.push('meal_type = ?');
+    params.push(meal_type);
+  }
+  if (title !== undefined) {
+    updates.push('title = ?');
+    params.push(title);
+  }
+  if (description !== undefined) {
+    updates.push('description = ?');
+    params.push(description);
+  }
+  if (image_url !== undefined) {
+    updates.push('image_url = ?');
+    params.push(image_url);
+  }
+  if (price !== undefined) {
+    updates.push('price = ?');
+    params.push(price);
+  }
+  if (available !== undefined) {
+    updates.push('available = ?');
+    params.push(available);
+  }
+  
+  if (updates.length === 0) {
+    return res.status(400).json({ success: false, error: 'no_updates' });
+  }
+  
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  params.push(id);
+  
+  const sql = `UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`;
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error('Update menu item error:', err);
+      return res.status(500).json({ success: false, error: 'db_error' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ success: false, error: 'not_found' });
+    }
+    res.json({ success: true, changes: this.changes });
+  });
+});
+
+// Delete menu item (admin only)
+app.delete('/api/menu-items/:id', (req, res) => {
+  // Simple auth check
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  
+  const id = req.params.id;
+  
+  db.run('DELETE FROM menu_items WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Delete menu item error:', err);
+      return res.status(500).json({ success: false, error: 'db_error' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ success: false, error: 'not_found' });
+    }
+    res.json({ success: true, changes: this.changes });
+  });
+});
+
+// ========== BOOKINGS API ==========
+
+// Get user bookings
+app.get('/api/bookings', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const sql = `
+      SELECT b.*, u.username, u.full_name 
+      FROM bookings b 
+      JOIN users u ON b.user_id = u.id 
+      WHERE b.user_id = ? 
+      ORDER BY b.booking_date DESC, b.created_at DESC
+      LIMIT 50
+    `;
+    
+    db.all(sql, [decoded.id], (err, rows) => {
+      if (err) {
+        console.error('Get bookings error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, bookings: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get all bookings (admin only)
+app.get('/api/admin/bookings', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const sql = `
+      SELECT b.*, u.username, u.full_name 
+      FROM bookings b 
+      JOIN users u ON b.user_id = u.id 
+      ORDER BY b.booking_date DESC, b.created_at DESC
+      LIMIT 100
+    `;
+    
+    db.all(sql, [], (err, rows) => {
+      if (err) {
+        console.error('Get all bookings error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, bookings: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get statistics (admin only)
+app.get('/api/admin/stats', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    // Get various stats
+    const stats = {};
+    
+    // Total students
+    db.get('SELECT COUNT(*) as count FROM users WHERE role = "user"', (err, row) => {
+      if (err) console.error('Stats error:', err);
+      stats.students = row ? row.count : 0;
+      
+      // Meals served today
+      db.get('SELECT SUM(quantity) as count FROM bookings WHERE date(booking_date) = date("now")', (err2, row2) => {
+        if (err2) console.error('Stats error:', err2);
+        stats.mealsToday = row2 ? (row2.count || 0) : 0;
+        
+        // Total revenue
+        db.get('SELECT SUM(total_amount) as sum FROM bookings', (err3, row3) => {
+          if (err3) console.error('Stats error:', err3);
+          stats.revenue = row3 ? (row3.sum || 0) : 0;
+          
+          // Pending payments
+          db.get('SELECT SUM(amount) as sum FROM transactions WHERE status = "pending"', (err4, row4) => {
+            if (err4) console.error('Stats error:', err4);
+            stats.pending = row4 ? (row4.sum || 0) : 0;
+            
+            // Meal type counts for today
+            db.all('SELECT meal_type, SUM(quantity) as count FROM bookings WHERE date(booking_date) = date("now") GROUP BY meal_type', (err5, rows5) => {
+              if (err5) console.error('Stats error:', err5);
+              stats.mealCounts = {};
+              if (rows5) {
+                rows5.forEach(r => {
+                  stats.mealCounts[r.meal_type] = r.count;
+                });
+              }
+              
+              res.json({ success: true, stats });
+            });
+          });
+        });
+      });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
 });
 
 // Start server with fallback ports if 3000 is busy
