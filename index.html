@@ -1,93 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    
-   
-    <title>Login Page</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MessMate - Login</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    
-    <form id="loginForm"><center> <h2>SMART MESS MANAGEMENT SYSTEM</h2></center>
-<br>
-        <p> Username : <input type="text" id="username" name="username" placeholder="Enter your username" required></p>
-        <br>
-        <p> Password : <input type="password" id="password" name="password" placeholder="Enter your password" required></p>
-        <br>
-     <center> <div class="options">
-        <label><input type="checkbox"> Remember me</label>
-        <a href="#">Forgot password?</a>
-</div></center>
-        <br>
-        <center><button type="submit">Login</button></center> 
+    <div class="login-container">
+        <!-- Left Panel - Branding -->
+        <div class="login-left-panel">
+            <div class="brand-content">
+                <div class="logo-container">
+                    <svg class="logo-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="8" width="48" height="48" rx="8" fill="url(#gradient1)"/>
+                        <path d="M20 28h24M20 32h24M20 36h16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="32" cy="20" r="3" fill="white"/>
+                        <defs>
+                            <linearGradient id="gradient1" x1="8" y1="8" x2="56" y2="56">
+                                <stop offset="0%" style="stop-color:#4F46E5"/>
+                                <stop offset="100%" style="stop-color:#7C3AED"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1 class="brand-name">MessMate</h1>
+                </div>
+                <p class="brand-tagline">Smart Mess Management System</p>
+                <p class="brand-description">Streamline your mess operations with our comprehensive management solution. Book meals, track transactions, and manage your account seamlessly.</p>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>Easy Meal Booking</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                        </svg>
+                        <span>Transaction History</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <span>Profile Management</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<br>
-<center> Not Registered?  <a href="signup.html">Sign up</a></center> 
-<br>
-<center>
-    <button type="button" id="adminModeToggle" style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; background:#f3f4f6; cursor:pointer;">Admin Login</button>
-    <div id="adminHint" style="display:none; font-size:12px; color:#374151; margin-top:6px;">Admin mode enabled. Use your admin credentials.</div>
-    <div id="adminError" style="display:none; font-size:12px; color:#b91c1c; margin-top:6px;">Only admin users can access the admin dashboard.</div>
-  
-  
-</center>
+        <!-- Right Panel - Login Form -->
+        <div class="login-right-panel">
+            <div class="login-form-container">
+                <div class="login-header">
+                    <h2 class="login-title" id="formTitle">Welcome Back</h2>
+                    <p class="login-subtitle">Sign in to your account to continue</p>
+                </div>
 
-     </form>
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="username" class="form-label">Username or Email</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username" required autocomplete="username">
+                        </div>
+                    </div>
 
-<script>
-// Intercept the form submit and send credentials to the backend
-document.getElementById('loginForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const username = document.getElementById('username').value || '';
-    const password = document.getElementById('password').value || '';
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                            <button type="button" class="password-toggle" id="togglePassword">
+                                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-    try {
-        const res = await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="checkbox-text">Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-link">Forgot password?</a>
+                    </div>
+
+                    <div id="errorMessage" class="error-message"></div>
+                    <div id="adminHint" class="admin-hint"></div>
+
+                    <button type="submit" class="submit-btn" id="loginBtn">
+                        <span class="btn-text">Sign In</span>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+
+                    <div class="divider">
+                        <span class="divider-text">or</span>
+                    </div>
+
+                    <button type="button" id="adminModeToggle" class="mode-toggle-btn">
+                        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                        <span>Switch to Admin Login</span>
+                    </button>
+                </form>
+
+                <div class="signup-prompt">
+                    <p>Don't have an account? <a href="signup.html" class="signup-link">Sign up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password toggle visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('active');
         });
-        const data = await res.json();
-        if (data && data.success) {
-            const role = data.user && data.user.role;
-            if (role === 'admin') {
-                window.location.href = 'admin_dashboard.html';
+
+        // Admin mode toggle
+        let adminMode = false;
+        const toggleBtn = document.getElementById('adminModeToggle');
+        const formTitle = document.getElementById('formTitle');
+        const userInput = document.getElementById('username');
+        const passInput = document.getElementById('password');
+        const adminHint = document.getElementById('adminHint');
+        const loginBtn = document.getElementById('loginBtn');
+
+        toggleBtn.addEventListener('click', () => {
+            adminMode = !adminMode;
+            
+            if (adminMode) {
+                formTitle.textContent = 'Admin Access';
+                toggleBtn.querySelector('span').textContent = 'Switch to User Login';
+                userInput.placeholder = 'Enter admin username';
+                passInput.placeholder = 'Enter admin password';
+                adminHint.textContent = 'Admin mode enabled. Use your admin credentials to access the admin panel.';
+                adminHint.style.display = 'block';
+                loginBtn.querySelector('.btn-text').textContent = 'Admin Sign In';
+                document.querySelector('.login-right-panel').classList.add('admin-mode');
             } else {
-                window.location.href = 'dashboard.html';
+                formTitle.textContent = 'Welcome Back';
+                toggleBtn.querySelector('span').textContent = 'Switch to Admin Login';
+                userInput.placeholder = 'Enter your username';
+                passInput.placeholder = 'Enter your password';
+                adminHint.style.display = 'none';
+                loginBtn.querySelector('.btn-text').textContent = 'Sign In';
+                document.querySelector('.login-right-panel').classList.remove('admin-mode');
             }
-        } else {
-            alert('Login failed: ' + (data && data.error ? data.error : 'unknown_error'));
-        }
-    } catch (err) {
-    console.error(err);
-    alert('Server error. Please try again.');
-    }
-});
+            
+            document.getElementById('errorMessage').style.display = 'none';
+        });
 
-// Admin mode toggle (no prefilled credentials)
-(function(){
-  const toggleBtn = document.getElementById('adminModeToggle');
-  const adminHint = document.getElementById('adminHint');
-  const adminErr = document.getElementById('adminError');
-  const heading = document.querySelector('#loginForm h2');
-  const userInput = document.getElementById('username');
-  const passInput = document.getElementById('password');
-  let adminMode = false;
-
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      adminMode = !adminMode;
-      toggleBtn.textContent = adminMode ? 'User Login' : 'Admin Login';
-      if (heading) heading.textContent = adminMode ? 'ADMIN LOGIN' : 'SMART MESS MANAGEMENT SYSTEM';
-      if (userInput) userInput.placeholder = adminMode ? 'Enter admin username' : 'Enter your username';
-      if (passInput) passInput.placeholder = adminMode ? 'Enter admin password' : 'Enter your password';
-      adminHint.style.display = adminMode ? 'block' : 'none';
-      adminErr.style.display = 'none';
-    });
-  }
-})();
-</script>
+        // Form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+            errorMessage.textContent = '';
+            
+            // Disable button and show loading state
+            loginBtn.disabled = true;
+            loginBtn.classList.add('loading');
+            loginBtn.querySelector('.btn-text').textContent = 'Signing in...';
+            
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                
+                if (data && data.success) {
+                    const role = data.user && data.user.role;
+                    
+                    // Show success state
+                    loginBtn.querySelector('.btn-text').textContent = 'Success!';
+                    
+                    // Redirect based on role
+                    setTimeout(() => {
+                        if (role === 'admin') {
+                            window.location.href = 'admin_dashboard.html';
+                        } else {
+                            window.location.href = 'dashboard.html';
+                        }
+                    }, 500);
+                } else {
+                    // Show error
+                    let errorText = 'Login failed. Please check your credentials.';
+                    if (data && data.error) {
+                        if (data.error === 'invalid_credentials') {
+                            errorText = 'Invalid username or password. Please try again.';
+                        } else if (data.error === 'missing_fields') {
+                            errorText = 'Please enter both username and password.';
+                        }
+                    }
+                    
+                    errorMessage.textContent = errorText;
+                    errorMessage.style.display = 'block';
+                    
+                    // Reset button
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('loading');
+                    loginBtn.querySelector('.btn-text').textContent = adminMode ? 'Admin Sign In' : 'Sign In';
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                errorMessage.textContent = 'Server error. Please try again later.';
+                errorMessage.style.display = 'block';
+                
+                // Reset button
+                loginBtn.disabled = false;
+                loginBtn.classList.remove('loading');
+                loginBtn.querySelector('.btn-text').textContent = adminMode ? 'Admin Sign In' : 'Sign In';
+            }
+        });
+    </script>
 </body>
 </html>
