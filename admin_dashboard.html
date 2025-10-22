@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard - MessMate</title>
   <link rel="stylesheet" href="dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     .admin-grid { display: grid; grid-template-columns: repeat(4, minmax(220px,1fr)); gap: 1rem; margin-bottom: 2rem; }
     .admin-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; box-shadow: var(--shadow-sm); }
@@ -59,6 +60,17 @@
     .form-field textarea { min-height: 80px; resize: vertical; }
     .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
     .form-actions .btn { flex: 1; }
+    
+    /* Chart Styles */
+    .chart-container { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; }
+    .chart-header { margin-bottom: 1rem; }
+    .period-btn.active { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    
+    @media (max-width: 968px) {
+      .section > div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -223,12 +235,50 @@
       <div class="section">
         <h3>Reports & Analytics</h3>
         <div class="toolbar">
-          <button class="btn">Last 30 days</button>
-          <button class="btn">This Year</button>
+          <button class="btn period-btn active" data-period="week">Last 7 Days</button>
+          <button class="btn period-btn" data-period="month">Last 30 Days</button>
+          <button class="btn" id="refreshCharts">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:4px;">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <canvas id="chartRevenue"></canvas>
-          <canvas id="chartMeals"></canvas>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+          <!-- Revenue Distribution Pie Chart -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: .5rem;">Revenue Distribution by Meal Type</h4>
+              <p style="font-size: .85rem; color: var(--text-secondary);">Total revenue breakdown</p>
+            </div>
+            <div style="position: relative; height: 300px; padding: 1rem;">
+              <canvas id="revenueDistributionChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Sales Trends Line Chart -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: .5rem;">Sales Trends</h4>
+              <p style="font-size: .85rem; color: var(--text-secondary);">Revenue and orders over time</p>
+            </div>
+            <div style="position: relative; height: 300px; padding: 1rem;">
+              <canvas id="salesTrendsChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Full Width Chart for Detailed Analysis -->
+        <div class="chart-container" style="margin-top: 1.5rem;">
+          <div class="chart-header">
+            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: .5rem;">Detailed Sales Analysis</h4>
+            <p style="font-size: .85rem; color: var(--text-secondary);">Revenue, orders, and meals served</p>
+          </div>
+          <div style="position: relative; height: 350px; padding: 1rem;">
+            <canvas id="detailedAnalysisChart"></canvas>
+          </div>
         </div>
       </div>
     </main>
@@ -334,35 +384,353 @@
       pendingList.appendChild(div);
     });
 
-    // Minimal charts (canvas) - simple line charts without external libs
-    function drawLineChart(canvasId, points, label) {
-      const c = document.getElementById(canvasId);
-      if (!c) return;
-      const ctx = c.getContext('2d');
-      const w = c.width = c.clientWidth * window.devicePixelRatio;
-      const h = c.height = c.clientHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-      ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
-      ctx.fillStyle = '#111827';
-      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto';
-      ctx.fillText(label, 12, 18);
-      const pad = 28; const W = c.clientWidth - pad*2; const H = c.clientHeight - pad*2;
-      const min = Math.min(...points), max = Math.max(...points) || 1;
-      ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 1;
-      // grid
-      for (let i=0;i<=4;i++){ const y = pad + (H*i/4); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad+W, y); ctx.stroke(); }
-      // line
-      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
-      points.forEach((v, i) => {
-        const x = pad + (W * (i/(points.length-1||1)));
-        const y = pad + H - (H * ((v - min) / (max - min || 1)));
-        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-      });
-      ctx.stroke();
+    // ========== PROFESSIONAL CHART.JS IMPLEMENTATION ==========
+    
+    let revenueChart = null;
+    let salesChart = null;
+    let detailedChart = null;
+    let currentPeriod = 'week';
+
+    // Chart.js default configuration
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+
+    // Load Revenue Distribution Pie Chart
+    async function loadRevenueDistribution() {
+      try {
+        const res = await fetch('/api/admin/revenue-distribution');
+        const data = await res.json();
+        
+        if (data.success) {
+          const distribution = data.distribution;
+          
+          // Prepare data for pie chart
+          const labels = distribution.map(d => d.meal_type.charAt(0).toUpperCase() + d.meal_type.slice(1));
+          const revenues = distribution.map(d => d.revenue || 0);
+          const colors = ['#4F46E5', '#7C3AED', '#EC4899'];
+          
+          // Destroy existing chart
+          if (revenueChart) revenueChart.destroy();
+          
+          // Create new pie chart
+          const ctx = document.getElementById('revenueDistributionChart').getContext('2d');
+          revenueChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Revenue',
+                data: revenues,
+                backgroundColor: colors,
+                borderColor: '#ffffff',
+                borderWidth: 3,
+                hoverOffset: 10
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    padding: 15,
+                    font: { size: 13, weight: '500' },
+                    usePointStyle: true,
+                    pointStyle: 'circle'
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.label || '';
+                      const value = context.parsed || 0;
+                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                      const percentage = ((value / total) * 100).toFixed(1);
+                      return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                    }
+                  },
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  titleFont: { size: 14, weight: 'bold' },
+                  bodyFont: { size: 13 },
+                  cornerRadius: 6
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error loading revenue distribution:', err);
+      }
     }
-    drawLineChart('chartRevenue', [12,14,11,18,22,28,24,30,26,35,38,42], 'Monthly Revenue (₹k)');
-    drawLineChart('chartMeals', [320,340,300,360,380,400,420,410,390,440,460,480], 'Meals Served');
+
+    // Load Sales Trends Chart
+    async function loadSalesTrends(period = 'week') {
+      try {
+        const res = await fetch(`/api/admin/sales-trends?period=${period}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const trends = data.trends;
+          
+          // Prepare data
+          const labels = trends.map(t => {
+            const date = new Date(t.date);
+            return period === 'year' ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 
+                   date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          });
+          const revenues = trends.map(t => t.revenue || 0);
+          const orders = trends.map(t => t.orders || 0);
+          
+          // Destroy existing chart
+          if (salesChart) salesChart.destroy();
+          
+          // Create new line chart
+          const ctx = document.getElementById('salesTrendsChart').getContext('2d');
+          salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Revenue (₹)',
+                data: revenues,
+                borderColor: '#4F46E5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#4F46E5',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                intersect: false,
+                mode: 'index'
+              },
+              plugins: {
+                legend: {
+                  display: true,
+                  position: 'top',
+                  labels: {
+                    font: { size: 12, weight: '500' },
+                    usePointStyle: true,
+                    padding: 15
+                  }
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  cornerRadius: 6,
+                  callbacks: {
+                    label: function(context) {
+                      return `Revenue: ₹${context.parsed.y.toFixed(2)}`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                  },
+                  ticks: {
+                    callback: function(value) {
+                      return '₹' + value.toFixed(0);
+                    },
+                    font: { size: 11 }
+                  }
+                },
+                x: {
+                  grid: {
+                    display: false
+                  },
+                  ticks: {
+                    font: { size: 11 },
+                    maxRotation: 45,
+                    minRotation: 0
+                  }
+                }
+              }
+            }
+          });
+          
+          // Load detailed analysis chart
+          loadDetailedAnalysis(trends, labels);
+        }
+      } catch (err) {
+        console.error('Error loading sales trends:', err);
+      }
+    }
+
+    // Load Detailed Analysis Chart (Multi-line)
+    function loadDetailedAnalysis(trends, labels) {
+      try {
+        const revenues = trends.map(t => t.revenue || 0);
+        const orders = trends.map(t => t.orders || 0);
+        const meals = trends.map(t => t.meals || 0);
+        
+        // Destroy existing chart
+        if (detailedChart) detailedChart.destroy();
+        
+        // Create new multi-line chart
+        const ctx = document.getElementById('detailedAnalysisChart').getContext('2d');
+        detailedChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Revenue (₹)',
+                data: revenues,
+                backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                borderColor: '#4F46E5',
+                borderWidth: 2,
+                borderRadius: 6,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Orders',
+                data: orders,
+                type: 'line',
+                borderColor: '#EC4899',
+                backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                yAxisID: 'y1'
+              },
+              {
+                label: 'Meals Served',
+                data: meals,
+                type: 'line',
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  font: { size: 12, weight: '500' },
+                  usePointStyle: true,
+                  padding: 15
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                cornerRadius: 6
+              }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                  callback: function(value) {
+                    return '₹' + value.toFixed(0);
+                  },
+                  font: { size: 11 }
+                },
+                title: {
+                  display: true,
+                  text: 'Revenue (₹)',
+                  font: { size: 12, weight: 'bold' }
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                grid: {
+                  drawOnChartArea: false
+                },
+                ticks: {
+                  font: { size: 11 }
+                },
+                title: {
+                  display: true,
+                  text: 'Orders / Meals',
+                  font: { size: 12, weight: 'bold' }
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  font: { size: 11 },
+                  maxRotation: 45,
+                  minRotation: 0
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Error loading detailed analysis:', err);
+      }
+    }
+
+    // Period buttons
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentPeriod = this.dataset.period;
+        loadSalesTrends(currentPeriod);
+      });
+    });
+
+    // Refresh charts button
+    document.getElementById('refreshCharts').addEventListener('click', () => {
+      loadRevenueDistribution();
+      loadSalesTrends(currentPeriod);
+      loadStats();
+    });
+
+    // Auto-refresh charts every 60 seconds
+    setInterval(() => {
+      loadRevenueDistribution();
+      loadSalesTrends(currentPeriod);
+      loadStats();
+    }, 60000);
+
+    // Initial chart load
+    loadRevenueDistribution();
+    loadSalesTrends(currentPeriod);
 
     // Basic buttons
     document.getElementById('saveMenu').addEventListener('click', ()=> alert('Menu saved (placeholder).'));
