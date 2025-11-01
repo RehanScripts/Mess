@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MessMate - Feedback</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <style>
+        .feedback-form-section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .star-rating {
+            display: flex;
+            gap: 0.5rem;
+            font-size: 2rem;
+        }
+        
+        .star {
+            cursor: pointer;
+            color: #ddd;
+            transition: color 0.2s;
+        }
+        
+        .star.active,
+        .star:hover {
+            color: #ffc107;
+        }
+        
+        .submit-btn {
+            background: var(--primary-blue);
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .submit-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .feedback-history {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .feedback-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            background: var(--bg-primary);
+        }
+        
+        .feedback-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .feedback-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .type-general { background: rgba(59, 130, 246, 0.15); color: var(--primary-blue); }
+        .type-food { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .type-service { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+        .type-cleanliness { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .type-other { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-pending { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .status-reviewed { background: rgba(59, 130, 246, 0.15); color: var(--primary-blue); }
+        .status-resolved { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        
+        .feedback-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feedback-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .feedback-date {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+        
+        .star-display {
+            color: #ffc107;
+            margin-top: 0.5rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1 class="sidebar-logo">MessMate</h1>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            
+            <a href="book_meals.html" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Book Meals</span>
+            </a>
+            
+            <a href="my_attendance.html" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <polyline points="17 11 19 13 23 9"></polyline>
+                </svg>
+                <span>My Attendance</span>
+            </a>
+            
+            <a href="transactions.html" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span>Transactions</span>
+            </a>
+            
+            <a href="feedback.html" class="nav-item active">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Feedback</span>
+            </a>
+            
+            <a href="settings.html" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="index.html" class="nav-item logout">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <!-- Header -->
+        <header class="header">
+            <button class="menu-toggle" id="menuToggle">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="header-title">Feedback</div>
+            <div class="user-profile">
+                <span class="user-name">Student</span>
+                <div class="user-avatar">S</div>
+            </div>
+        </header>
+
+        <div class="container">
+            <main class="main-content">
+                <section class="page-header">
+                    <h2 class="page-title">Submit Feedback</h2>
+                    <p class="page-subtitle">Share your experience and help us improve our service.</p>
+                </section>
+
+                <!-- Success Message -->
+                <div class="success-message" id="successMessage">
+                    ✓ Feedback submitted successfully! Thank you for your input.
+                </div>
+
+                <!-- Feedback Form -->
+                <div class="feedback-form-section">
+                    <form id="feedbackForm">
+                        <div class="form-group">
+                            <label for="feedbackType">Feedback Type *</label>
+                            <select id="feedbackType" required>
+                                <option value="">Select type</option>
+                                <option value="general">General Feedback</option>
+                                <option value="food_quality">Food Quality</option>
+                                <option value="service">Service</option>
+                                <option value="cleanliness">Cleanliness</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="subject">Subject *</label>
+                            <input type="text" id="subject" placeholder="Brief subject of your feedback" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <textarea id="message" placeholder="Please share your detailed feedback here..." required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Rating (Optional)</label>
+                            <div class="star-rating" id="starRating">
+                                <span class="star" data-rating="1">★</span>
+                                <span class="star" data-rating="2">★</span>
+                                <span class="star" data-rating="3">★</span>
+                                <span class="star" data-rating="4">★</span>
+                                <span class="star" data-rating="5">★</span>
+                            </div>
+                            <input type="hidden" id="rating" value="">
+                        </div>
+
+                        <button type="submit" class="submit-btn">Submit Feedback</button>
+                    </form>
+                </div>
+
+                <!-- Feedback History -->
+                <div class="feedback-history">
+                    <h3 style="margin-bottom: 1.5rem;">My Feedback History</h3>
+                    <div id="feedbackList"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        let selectedRating = 0;
+
+        // Star rating functionality
+        const stars = document.querySelectorAll('.star');
+        const ratingInput = document.getElementById('rating');
+
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.rating);
+                ratingInput.value = selectedRating;
+                updateStars();
+            });
+
+            star.addEventListener('mouseenter', () => {
+                const rating = parseInt(star.dataset.rating);
+                highlightStars(rating);
+            });
+        });
+
+        document.getElementById('starRating').addEventListener('mouseleave', () => {
+            updateStars();
+        });
+
+        function highlightStars(rating) {
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function updateStars() {
+            highlightStars(selectedRating);
+        }
+
+        // Submit feedback
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const feedbackData = {
+                feedback_type: document.getElementById('feedbackType').value,
+                subject: document.getElementById('subject').value,
+                message: document.getElementById('message').value,
+                rating: selectedRating || null
+            };
+
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(feedbackData)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Show success message
+                    const successMsg = document.getElementById('successMessage');
+                    successMsg.classList.add('show');
+                    setTimeout(() => successMsg.classList.remove('show'), 5000);
+
+                    // Reset form
+                    document.getElementById('feedbackForm').reset();
+                    selectedRating = 0;
+                    updateStars();
+
+                    // Reload feedback list
+                    loadMyFeedback();
+                } else {
+                    alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error submitting feedback:', err);
+                alert('Failed to submit feedback. Please try again.');
+            }
+        });
+
+        // Load user's feedback history
+        async function loadMyFeedback() {
+            try {
+                const res = await fetch('/api/feedback/my');
+                const data = await res.json();
+
+                if (data.success) {
+                    displayFeedback(data.feedback);
+                }
+            } catch (err) {
+                console.error('Error loading feedback:', err);
+            }
+        }
+
+        // Display feedback list
+        function displayFeedback(feedbackList) {
+            const container = document.getElementById('feedbackList');
+
+            if (feedbackList.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <p>No feedback submitted yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = feedbackList.map(item => {
+                const typeClass = `type-${item.feedback_type.replace('_', '-')}`;
+                const statusClass = `status-${item.status}`;
+                const date = new Date(item.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                let stars = '';
+                if (item.rating) {
+                    stars = '<div class="star-display">' + '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating) + '</div>';
+                }
+
+                return `
+                    <div class="feedback-card">
+                        <div class="feedback-header">
+                            <span class="feedback-type ${typeClass}">${item.feedback_type.replace('_', ' ')}</span>
+                            <span class="status-badge ${statusClass}">${item.status}</span>
+                        </div>
+                        <div class="feedback-content">
+                            <h4>${item.subject}</h4>
+                            <p>${item.message}</p>
+                            ${stars}
+                        </div>
+                        <div class="feedback-date">Submitted on ${date}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initial load
+        loadMyFeedback();
+
+        // Logout functionality
+        document.querySelector('.sidebar-footer .logout')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await fetch('/logout', { method: 'POST' });
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>

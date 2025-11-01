@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance Management - MessMate Admin</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    .section { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; }
+    .section h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+    .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .btn { display: inline-flex; align-items: center; gap:.4rem; padding: .5rem .75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-size: .95rem; }
+    .btn-primary { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .table { width:100%; border-collapse: collapse; }
+    .table th, .table td { text-align:left; padding:.75rem; border-top:1px solid var(--border-color); font-size:.95rem; }
+    .table thead th { background: var(--gray-100); border-top:none; font-size:.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing:.04em; font-weight: 600; }
+    .status-badge { padding:.25rem .5rem; border-radius: 999px; font-size:.75rem; font-weight:600; }
+    .status-paid { background: rgba(16,185,129,.15); color: var(--accent-green); }
+    .status-pending { background: rgba(245,158,11,.15); color: var(--accent-orange); }
+    .status-failed { background: rgba(239,68,68,.15); color: var(--accent-red); }
+    
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--bg-primary); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header h3 { font-size: 1.25rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); }
+    .form-field { margin-bottom: 1rem; }
+    .form-field label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: .5rem; color: var(--text-primary); }
+    .form-field input, .form-field textarea, .form-field select { width: 100%; padding: .75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: .95rem; }
+    .form-field textarea { min-height: 80px; resize: vertical; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
+    .form-actions .btn { flex: 1; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.25rem; box-shadow: var(--shadow-sm); }
+    .stat-card h4 { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-bottom: .5rem; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: .25rem; }
+    .stat-card .subtext { font-size: 0.85rem; color: var(--text-secondary); }
+
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; }
+      .toolbar .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-logo">MessMate</h1>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="admin_dashboard.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Admin Dashboard</span>
+      </a>
+      <a href="admin_attendance.html" class="nav-item active">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <polyline points="17 11 19 13 23 9"></polyline>
+        </svg>
+        <span>Attendance</span>
+      </a>
+      <a href="admin_feedback.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Feedback</span>
+      </a>
+      <a href="admin_settings.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="index.html" class="nav-item logout">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="header">
+      <button class="menu-toggle" id="menuToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-title">Attendance Management</div>
+      <div class="user-profile">
+        <span class="user-name">Admin</span>
+        <div class="user-avatar">A</div>
+      </div>
+    </header>
+
+    <div class="container">
+      <main class="main-content">
+        <section class="page-header">
+          <h2 class="page-title">Attendance Management</h2>
+          <p class="page-subtitle">Track and manage student attendance for all meals.</p>
+        </section>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4>Total Records</h4>
+            <div class="value" id="statTotal">0</div>
+            <div class="subtext">All attendance records</div>
+          </div>
+          <div class="stat-card">
+            <h4>Present Today</h4>
+            <div class="value" id="statPresent">0</div>
+            <div class="subtext">Students marked present</div>
+          </div>
+          <div class="stat-card">
+            <h4>Absent Today</h4>
+            <div class="value" id="statAbsent">0</div>
+            <div class="subtext">Students marked absent</div>
+          </div>
+          <div class="stat-card">
+            <h4>Late Arrivals</h4>
+            <div class="value" id="statLate">0</div>
+            <div class="subtext">Students marked late</div>
+          </div>
+        </div>
+
+        <!-- Attendance Management Section -->
+        <div class="section">
+          <h3>Attendance Records</h3>
+          <div class="toolbar">
+            <button class="btn-primary btn" id="addAttendance">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Attendance
+            </button>
+            <button class="btn" id="refreshAttendance">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Refresh
+            </button>
+            <input type="date" id="attendanceFilterDate" class="btn" placeholder="Filter by date">
+            <select id="attendanceFilterMeal" class="btn">
+              <option value="">All Meals</option>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+            </select>
+          </div>
+          <div style="overflow:auto;">
+            <table class="table" id="attendanceTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Student Name</th>
+                  <th>Date</th>
+                  <th>Meal Type</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Attendance Modal -->
+  <div id="attendanceModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="attendanceModalTitle">Add Attendance</h3>
+        <button class="modal-close" id="closeAttendanceModal">&times;</button>
+      </div>
+      <form id="attendanceForm">
+        <input type="hidden" id="attendanceId">
+        <div class="form-field">
+          <label for="attendanceStudentId">Student *</label>
+          <select id="attendanceStudentId" required>
+            <option value="">Select Student</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="attendanceDate">Date *</label>
+          <input type="date" id="attendanceDate" required>
+        </div>
+        <div class="form-field">
+          <label for="attendanceMealType">Meal Type *</label>
+          <select id="attendanceMealType" required>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="attendanceStatus">Status *</label>
+          <select id="attendanceStatus" required>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+            <option value="late">Late</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="attendanceNotes">Notes</label>
+          <textarea id="attendanceNotes" placeholder="Any additional notes..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="cancelAttendanceBtn">Cancel</button>
+          <button type="submit" class="btn-primary btn" id="saveAttendanceBtn">Save Attendance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    let attendanceList = [];
+    let usersList = [];
+
+    // Load users for dropdown
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/admin/users');
+        const data = await res.json();
+        
+        if (data.success) {
+          usersList = data.users.filter(u => u.role !== 'admin');
+          const select = document.getElementById('attendanceStudentId');
+          select.innerHTML = '<option value="">Select Student</option>';
+          usersList.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.full_name || user.username;
+            select.appendChild(option);
+          });
+        }
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
+
+    // Load attendance
+    async function loadAttendance() {
+      try {
+        const date = document.getElementById('attendanceFilterDate').value;
+        const meal_type = document.getElementById('attendanceFilterMeal').value;
+        
+        let url = '/api/admin/attendance?';
+        if (date) url += `date=${date}&`;
+        if (meal_type) url += `meal_type=${meal_type}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.success) {
+          attendanceList = data.attendance;
+          displayAttendance(data.attendance);
+          updateStatistics(data.attendance);
+        }
+      } catch (err) {
+        console.error('Error loading attendance:', err);
+      }
+    }
+
+    // Update statistics
+    function updateStatistics(attendance) {
+      const today = new Date().toISOString().split('T')[0];
+      const todayRecords = attendance.filter(a => a.attendance_date.startsWith(today));
+      
+      document.getElementById('statTotal').textContent = attendance.length;
+      document.getElementById('statPresent').textContent = todayRecords.filter(a => a.status === 'present').length;
+      document.getElementById('statAbsent').textContent = todayRecords.filter(a => a.status === 'absent').length;
+      document.getElementById('statLate').textContent = todayRecords.filter(a => a.status === 'late').length;
+    }
+
+    // Display attendance in table
+    function displayAttendance(attendance) {
+      const tbody = document.querySelector('#attendanceTable tbody');
+      tbody.innerHTML = '';
+      
+      if (attendance.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-secondary);">No attendance records found</td></tr>';
+        return;
+      }
+      
+      attendance.forEach(item => {
+        const tr = document.createElement('tr');
+        const date = new Date(item.attendance_date).toLocaleDateString();
+        const statusClass = item.status === 'present' ? 'status-paid' : item.status === 'late' ? 'status-pending' : 'status-failed';
+        
+        tr.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.student_name || item.full_name || item.username || 'N/A'}</td>
+          <td>${date}</td>
+          <td>${item.meal_type.charAt(0).toUpperCase() + item.meal_type.slice(1)}</td>
+          <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+          <td>${item.notes || '-'}</td>
+          <td>
+            <button class="btn" style="padding: .25rem .5rem; font-size: .85rem;" onclick="editAttendance(${item.id})">Edit</button>
+            <button class="btn-danger btn" style="padding: .25rem .5rem; font-size: .85rem;" onclick="deleteAttendance(${item.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Edit attendance
+    window.editAttendance = async function(id) {
+      try {
+        const res = await fetch(`/api/admin/attendance/${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const item = data.attendance;
+          document.getElementById('attendanceModalTitle').textContent = 'Edit Attendance';
+          document.getElementById('attendanceId').value = item.id;
+          document.getElementById('attendanceStudentId').value = item.user_id;
+          document.getElementById('attendanceDate').value = item.attendance_date.split('T')[0];
+          document.getElementById('attendanceMealType').value = item.meal_type;
+          document.getElementById('attendanceStatus').value = item.status;
+          document.getElementById('attendanceNotes').value = item.notes || '';
+          document.getElementById('attendanceModal').classList.add('active');
+        }
+      } catch (err) {
+        console.error('Error loading attendance:', err);
+        alert('Failed to load attendance');
+      }
+    };
+
+    // Delete attendance
+    window.deleteAttendance = async function(id) {
+      if (!confirm('Are you sure you want to delete this attendance record?')) return;
+      
+      try {
+        const res = await fetch(`/api/admin/attendance/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        if (data.success) {
+          loadAttendance();
+        } else {
+          alert('Failed to delete attendance');
+        }
+      } catch (err) {
+        console.error('Error deleting attendance:', err);
+        alert('Failed to delete attendance');
+      }
+    };
+
+    // Attendance modal handling
+    const attendanceModal = document.getElementById('attendanceModal');
+    const attendanceForm = document.getElementById('attendanceForm');
+    
+    document.getElementById('addAttendance').addEventListener('click', () => {
+      document.getElementById('attendanceModalTitle').textContent = 'Add Attendance';
+      attendanceForm.reset();
+      document.getElementById('attendanceId').value = '';
+      document.getElementById('attendanceDate').valueAsDate = new Date();
+      attendanceModal.classList.add('active');
+    });
+    
+    document.getElementById('closeAttendanceModal').addEventListener('click', () => {
+      attendanceModal.classList.remove('active');
+    });
+    
+    document.getElementById('cancelAttendanceBtn').addEventListener('click', () => {
+      attendanceModal.classList.remove('active');
+    });
+    
+    attendanceModal.addEventListener('click', (e) => {
+      if (e.target === attendanceModal) {
+        attendanceModal.classList.remove('active');
+      }
+    });
+
+    // Save attendance
+    attendanceForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('attendanceId').value;
+      const user_id = document.getElementById('attendanceStudentId').value;
+      const student = usersList.find(u => u.id == user_id);
+      
+      const attendanceData = {
+        user_id: user_id,
+        student_name: student ? (student.full_name || student.username) : '',
+        attendance_date: document.getElementById('attendanceDate').value,
+        meal_type: document.getElementById('attendanceMealType').value,
+        status: document.getElementById('attendanceStatus').value,
+        notes: document.getElementById('attendanceNotes').value || ''
+      };
+      
+      try {
+        const url = id ? `/api/admin/attendance/${id}` : '/api/admin/attendance';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(attendanceData)
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          attendanceModal.classList.remove('active');
+          loadAttendance();
+        } else {
+          if (data.error === 'duplicate_entry') {
+            alert('Attendance already exists for this student, date, and meal type');
+          } else {
+            alert('Failed to save attendance: ' + (data.error || 'Unknown error'));
+          }
+        }
+      } catch (err) {
+        console.error('Error saving attendance:', err);
+        alert('Failed to save attendance');
+      }
+    });
+
+    document.getElementById('refreshAttendance').addEventListener('click', loadAttendance);
+    document.getElementById('attendanceFilterDate').addEventListener('change', loadAttendance);
+    document.getElementById('attendanceFilterMeal').addEventListener('change', loadAttendance);
+
+    // Initial load
+    loadUsers();
+    loadAttendance();
+
+    // Logout
+    document.querySelector('.sidebar-footer .logout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await fetch('/logout', { method: 'POST' }); } catch {}
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

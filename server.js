@@ -78,6 +78,53 @@ db.serialize(() => {
     FOREIGN KEY (booking_id) REFERENCES bookings(id)
   )`);
 
+  // feedback table
+  db.run(`CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    student_name TEXT,
+    feedback_type TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    rating INTEGER,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
+
+  // complaints table
+  db.run(`CREATE TABLE IF NOT EXISTS complaints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    student_name TEXT,
+    complaint_type TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority TEXT DEFAULT 'medium',
+    status TEXT DEFAULT 'open',
+    resolution TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
+
+  // attendance table
+  db.run(`CREATE TABLE IF NOT EXISTS attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    student_name TEXT,
+    attendance_date DATE NOT NULL,
+    meal_type TEXT NOT NULL,
+    status TEXT DEFAULT 'present',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, attendance_date, meal_type)
+  )`);
+
   // Migration: add role column if missing, then seed
   const continueAfterMigration = () => {
     // Seed a default user if none exists
@@ -497,6 +544,85 @@ app.get('/api/bookings', (req, res) => {
   }
 });
 
+// Create a new booking (student/user)
+app.post('/api/bookings', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { booking_date, meal_type, quantity, total_amount } = req.body;
+    
+    if (!booking_date || !meal_type || !quantity || !total_amount) {
+      return res.status(400).json({ success: false, error: 'missing_fields' });
+    }
+    
+    // Create booking
+    const bookingStmt = db.prepare(`
+      INSERT INTO bookings (user_id, booking_date, meal_type, quantity, total_amount, status) 
+      VALUES (?, ?, ?, ?, ?, 'confirmed')
+    `);
+    
+    bookingStmt.run([decoded.id, booking_date, meal_type, quantity, total_amount], function(bookingErr) {
+      if (bookingErr) {
+        console.error('Create booking error:', bookingErr);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      
+      const bookingId = this.lastID;
+      
+      // Get user info for attendance
+      db.get('SELECT username, full_name FROM users WHERE id = ?', [decoded.id], (userErr, user) => {
+        if (userErr) {
+          console.error('Get user error:', userErr);
+        }
+        
+        // Automatically create attendance record
+        const attendanceStmt = db.prepare(`
+          INSERT OR REPLACE INTO attendance (user_id, student_name, attendance_date, meal_type, status, notes) 
+          VALUES (?, ?, ?, ?, 'present', 'Auto-marked via booking')
+        `);
+        
+        attendanceStmt.run([
+          decoded.id, 
+          user ? user.full_name || user.username : decoded.username, 
+          booking_date, 
+          meal_type
+        ], function(attErr) {
+          if (attErr) {
+            console.error('Auto-attendance error:', attErr);
+            // Don't fail the booking if attendance fails
+          }
+        });
+        attendanceStmt.finalize();
+        
+        // Create transaction record
+        const txStmt = db.prepare(`
+          INSERT INTO transactions (user_id, booking_id, amount, transaction_type, status) 
+          VALUES (?, ?, ?, 'booking', 'completed')
+        `);
+        
+        txStmt.run([decoded.id, bookingId, total_amount], function(txErr) {
+          if (txErr) {
+            console.error('Transaction error:', txErr);
+          }
+        });
+        txStmt.finalize();
+        
+        res.json({ 
+          success: true, 
+          booking_id: bookingId,
+          message: 'Booking confirmed and attendance marked automatically'
+        });
+      });
+    });
+    bookingStmt.finalize();
+  } catch (e) {
+    console.error('Booking error:', e);
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
 // Get all bookings (admin only)
 app.get('/api/admin/bookings', (req, res) => {
   const token = req.cookies && req.cookies.auth;
@@ -744,6 +870,829 @@ app.get('/api/admin/top-items', (req, res) => {
       }
       
       res.json({ success: true, items: rows || [] });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// ========== FEEDBACK API ==========
+
+// Get all feedback (admin only)
+app.get('/api/admin/feedback', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const sql = `
+      SELECT f.*, u.username, u.full_name 
+      FROM feedback f 
+      LEFT JOIN users u ON f.user_id = u.id 
+      ORDER BY f.created_at DESC
+      LIMIT 100
+    `;
+    
+    db.all(sql, [], (err, rows) => {
+      if (err) {
+        console.error('Get feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, feedback: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get single feedback entry
+app.get('/api/admin/feedback/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const sql = `
+      SELECT f.*, u.username, u.full_name 
+      FROM feedback f 
+      LEFT JOIN users u ON f.user_id = u.id 
+      WHERE f.id = ?
+    `;
+    
+    db.get(sql, [id], (err, row) => {
+      if (err) {
+        console.error('Get feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (!row) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, feedback: row });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Create new feedback (admin only - for adding on behalf of students)
+app.post('/api/admin/feedback', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const { user_id, student_name, feedback_type, subject, message, rating, status } = req.body;
+    
+    if (!subject || !message || !feedback_type) {
+      return res.status(400).json({ success: false, error: 'missing_fields' });
+    }
+    
+    const stmt = db.prepare(`
+      INSERT INTO feedback (user_id, student_name, feedback_type, subject, message, rating, status) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run([
+      user_id || decoded.id, 
+      student_name || '', 
+      feedback_type, 
+      subject, 
+      message, 
+      rating || null, 
+      status || 'pending'
+    ], function(err) {
+      if (err) {
+        console.error('Create feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, id: this.lastID });
+    });
+    stmt.finalize();
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Update feedback (admin only)
+app.put('/api/admin/feedback/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const { student_name, feedback_type, subject, message, rating, status } = req.body;
+    
+    const updates = [];
+    const params = [];
+    
+    if (student_name !== undefined) {
+      updates.push('student_name = ?');
+      params.push(student_name);
+    }
+    if (feedback_type !== undefined) {
+      updates.push('feedback_type = ?');
+      params.push(feedback_type);
+    }
+    if (subject !== undefined) {
+      updates.push('subject = ?');
+      params.push(subject);
+    }
+    if (message !== undefined) {
+      updates.push('message = ?');
+      params.push(message);
+    }
+    if (rating !== undefined) {
+      updates.push('rating = ?');
+      params.push(rating);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'no_updates' });
+    }
+    
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+    
+    const sql = `UPDATE feedback SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Delete feedback (admin only)
+app.delete('/api/admin/feedback/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    
+    db.run('DELETE FROM feedback WHERE id = ?', [id], function(err) {
+      if (err) {
+        console.error('Delete feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// ========== STUDENT FEEDBACK API ==========
+
+// Submit feedback (student)
+app.post('/api/feedback', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    const { feedback_type, subject, message, rating } = req.body;
+    
+    if (!subject || !message || !feedback_type) {
+      return res.status(400).json({ success: false, error: 'missing_fields' });
+    }
+    
+    // Get student name from users table
+    db.get('SELECT full_name, username FROM users WHERE id = ?', [decoded.id], (err, user) => {
+      if (err) {
+        console.error('Get user error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      
+      const student_name = user ? (user.full_name || user.username) : '';
+      
+      const stmt = db.prepare(`
+        INSERT INTO feedback (user_id, student_name, feedback_type, subject, message, rating, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      stmt.run([
+        decoded.id, 
+        student_name, 
+        feedback_type, 
+        subject, 
+        message, 
+        rating || null, 
+        'pending'
+      ], function(err) {
+        if (err) {
+          console.error('Create feedback error:', err);
+          return res.status(500).json({ success: false, error: 'db_error' });
+        }
+        res.json({ success: true, id: this.lastID });
+      });
+      stmt.finalize();
+    });
+  } catch (e) {
+    console.error('Auth error:', e);
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get my feedback (student - view own feedback)
+app.get('/api/feedback/my', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    db.all(`
+      SELECT 
+        id,
+        feedback_type,
+        subject,
+        message,
+        rating,
+        status,
+        created_at,
+        resolved_at
+      FROM feedback 
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [decoded.id], (err, rows) => {
+      if (err) {
+        console.error('Get my feedback error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, feedback: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// ========== COMPLAINTS API ==========
+
+// Get all complaints (admin only)
+app.get('/api/admin/complaints', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const sql = `
+      SELECT c.*, u.username, u.full_name 
+      FROM complaints c 
+      LEFT JOIN users u ON c.user_id = u.id 
+      ORDER BY 
+        CASE c.status 
+          WHEN 'open' THEN 1 
+          WHEN 'in_progress' THEN 2 
+          ELSE 3 
+        END,
+        CASE c.priority 
+          WHEN 'high' THEN 1 
+          WHEN 'medium' THEN 2 
+          ELSE 3 
+        END,
+        c.created_at DESC
+      LIMIT 100
+    `;
+    
+    db.all(sql, [], (err, rows) => {
+      if (err) {
+        console.error('Get complaints error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, complaints: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get single complaint
+app.get('/api/admin/complaints/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const sql = `
+      SELECT c.*, u.username, u.full_name 
+      FROM complaints c 
+      LEFT JOIN users u ON c.user_id = u.id 
+      WHERE c.id = ?
+    `;
+    
+    db.get(sql, [id], (err, row) => {
+      if (err) {
+        console.error('Get complaint error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (!row) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, complaint: row });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Create new complaint (admin only)
+app.post('/api/admin/complaints', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const { user_id, student_name, complaint_type, subject, description, priority, status } = req.body;
+    
+    if (!subject || !description || !complaint_type) {
+      return res.status(400).json({ success: false, error: 'missing_fields' });
+    }
+    
+    const stmt = db.prepare(`
+      INSERT INTO complaints (user_id, student_name, complaint_type, subject, description, priority, status) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run([
+      user_id || decoded.id, 
+      student_name || '', 
+      complaint_type, 
+      subject, 
+      description, 
+      priority || 'medium', 
+      status || 'open'
+    ], function(err) {
+      if (err) {
+        console.error('Create complaint error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, id: this.lastID });
+    });
+    stmt.finalize();
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Update complaint (admin only)
+app.put('/api/admin/complaints/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const { student_name, complaint_type, subject, description, priority, status, resolution } = req.body;
+    
+    const updates = [];
+    const params = [];
+    
+    if (student_name !== undefined) {
+      updates.push('student_name = ?');
+      params.push(student_name);
+    }
+    if (complaint_type !== undefined) {
+      updates.push('complaint_type = ?');
+      params.push(complaint_type);
+    }
+    if (subject !== undefined) {
+      updates.push('subject = ?');
+      params.push(subject);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      params.push(description);
+    }
+    if (priority !== undefined) {
+      updates.push('priority = ?');
+      params.push(priority);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+      if (status === 'resolved' || status === 'closed') {
+        updates.push('resolved_at = CURRENT_TIMESTAMP');
+      }
+    }
+    if (resolution !== undefined) {
+      updates.push('resolution = ?');
+      params.push(resolution);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'no_updates' });
+    }
+    
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+    
+    const sql = `UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update complaint error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Delete complaint (admin only)
+app.delete('/api/admin/complaints/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    
+    db.run('DELETE FROM complaints WHERE id = ?', [id], function(err) {
+      if (err) {
+        console.error('Delete complaint error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// ========== ATTENDANCE API ==========
+
+// Get student's own attendance records
+app.get('/api/attendance/my', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    const { start_date, end_date, meal_type } = req.query;
+    let sql = `
+      SELECT a.*, u.username, u.full_name 
+      FROM attendance a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.user_id = ?
+    `;
+    const params = [decoded.id];
+    
+    if (start_date) {
+      sql += ' AND date(a.attendance_date) >= date(?)';
+      params.push(start_date);
+    }
+    if (end_date) {
+      sql += ' AND date(a.attendance_date) <= date(?)';
+      params.push(end_date);
+    }
+    if (meal_type) {
+      sql += ' AND a.meal_type = ?';
+      params.push(meal_type);
+    }
+    
+    sql += ' ORDER BY a.attendance_date DESC, a.meal_type LIMIT 100';
+    
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        console.error('Get my attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, attendance: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get student's attendance statistics
+app.get('/api/attendance/my/stats', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    const stats = {};
+    
+    // Total attendance records
+    db.get('SELECT COUNT(*) as total FROM attendance WHERE user_id = ?', [decoded.id], (err1, row1) => {
+      if (err1) console.error('Stats error:', err1);
+      stats.total = row1 ? row1.total : 0;
+      
+      // Present count
+      db.get('SELECT COUNT(*) as present FROM attendance WHERE user_id = ? AND status = "present"', [decoded.id], (err2, row2) => {
+        if (err2) console.error('Stats error:', err2);
+        stats.present = row2 ? row2.present : 0;
+        
+        // Absent count
+        db.get('SELECT COUNT(*) as absent FROM attendance WHERE user_id = ? AND status = "absent"', [decoded.id], (err3, row3) => {
+          if (err3) console.error('Stats error:', err3);
+          stats.absent = row3 ? row3.absent : 0;
+          
+          // Late count
+          db.get('SELECT COUNT(*) as late FROM attendance WHERE user_id = ? AND status = "late"', [decoded.id], (err4, row4) => {
+            if (err4) console.error('Stats error:', err4);
+            stats.late = row4 ? row4.late : 0;
+            
+            // Calculate percentage
+            stats.percentage = stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
+            
+            // Meal-wise breakdown
+            db.all('SELECT meal_type, status, COUNT(*) as count FROM attendance WHERE user_id = ? GROUP BY meal_type, status', [decoded.id], (err5, rows5) => {
+              if (err5) console.error('Stats error:', err5);
+              stats.mealWise = rows5 || [];
+              
+              res.json({ success: true, stats });
+            });
+          });
+        });
+      });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get all attendance records (admin only)
+app.get('/api/admin/attendance', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const { date, meal_type, user_id } = req.query;
+    let sql = `
+      SELECT a.*, u.username, u.full_name 
+      FROM attendance a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (date) {
+      sql += ' AND date(a.attendance_date) = date(?)';
+      params.push(date);
+    }
+    if (meal_type) {
+      sql += ' AND a.meal_type = ?';
+      params.push(meal_type);
+    }
+    if (user_id) {
+      sql += ' AND a.user_id = ?';
+      params.push(user_id);
+    }
+    
+    sql += ' ORDER BY a.attendance_date DESC, a.meal_type LIMIT 200';
+    
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        console.error('Get attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, attendance: rows });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Get single attendance record
+app.get('/api/admin/attendance/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const sql = `
+      SELECT a.*, u.username, u.full_name 
+      FROM attendance a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.id = ?
+    `;
+    
+    db.get(sql, [id], (err, row) => {
+      if (err) {
+        console.error('Get attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (!row) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, attendance: row });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Create new attendance record (admin only)
+app.post('/api/admin/attendance', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const { user_id, student_name, attendance_date, meal_type, status, notes } = req.body;
+    
+    if (!user_id || !attendance_date || !meal_type) {
+      return res.status(400).json({ success: false, error: 'missing_fields' });
+    }
+    
+    const stmt = db.prepare(`
+      INSERT INTO attendance (user_id, student_name, attendance_date, meal_type, status, notes) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run([
+      user_id, 
+      student_name || '', 
+      attendance_date, 
+      meal_type, 
+      status || 'present', 
+      notes || ''
+    ], function(err) {
+      if (err) {
+        if (/UNIQUE constraint failed/i.test(String(err.message))) {
+          return res.status(409).json({ success: false, error: 'duplicate_entry' });
+        }
+        console.error('Create attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      res.json({ success: true, id: this.lastID });
+    });
+    stmt.finalize();
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Update attendance record (admin only)
+app.put('/api/admin/attendance/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    const { student_name, attendance_date, meal_type, status, notes } = req.body;
+    
+    const updates = [];
+    const params = [];
+    
+    if (student_name !== undefined) {
+      updates.push('student_name = ?');
+      params.push(student_name);
+    }
+    if (attendance_date !== undefined) {
+      updates.push('attendance_date = ?');
+      params.push(attendance_date);
+    }
+    if (meal_type !== undefined) {
+      updates.push('meal_type = ?');
+      params.push(meal_type);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+    if (notes !== undefined) {
+      updates.push('notes = ?');
+      params.push(notes);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'no_updates' });
+    }
+    
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+    
+    const sql = `UPDATE attendance SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+});
+
+// Delete attendance record (admin only)
+app.delete('/api/admin/attendance/:id', (req, res) => {
+  const token = req.cookies && req.cookies.auth;
+  if (!token) return res.status(401).json({ success: false, error: 'unauthorized' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'forbidden' });
+    }
+    
+    const id = req.params.id;
+    
+    db.run('DELETE FROM attendance WHERE id = ?', [id], function(err) {
+      if (err) {
+        console.error('Delete attendance error:', err);
+        return res.status(500).json({ success: false, error: 'db_error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ success: false, error: 'not_found' });
+      }
+      res.json({ success: true, changes: this.changes });
     });
   } catch (e) {
     return res.status(401).json({ success: false, error: 'unauthorized' });

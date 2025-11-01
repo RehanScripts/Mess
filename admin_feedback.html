@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback Management - MessMate</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    .section { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; }
+    .section h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
+    .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+    .btn { display: inline-flex; align-items: center; gap:.4rem; padding: .5rem .75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-size: .95rem; }
+    .btn-primary { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .table { width:100%; border-collapse: collapse; }
+    .table th, .table td { text-align:left; padding:.75rem; border-top:1px solid var(--border-color); font-size:.95rem; }
+    .table thead th { background: var(--gray-100); border-top:none; font-size:.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing:.04em; }
+    .status-badge { padding:.25rem .5rem; border-radius: 999px; font-size:.75rem; font-weight:600; }
+    .status-paid { background: rgba(16,185,129,.15); color: var(--accent-green); }
+    .status-pending { background: rgba(245,158,11,.15); color: var(--accent-orange); }
+    .status-failed { background: rgba(239,68,68,.15); color: var(--accent-red); }
+    
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--bg-primary); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header h3 { font-size: 1.25rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); }
+    .form-field { margin-bottom: 1rem; }
+    .form-field label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: .5rem; color: var(--text-primary); }
+    .form-field input, .form-field textarea, .form-field select { width: 100%; padding: .75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: .95rem; }
+    .form-field textarea { min-height: 80px; resize: vertical; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
+    .form-actions .btn { flex: 1; }
+    
+    .page-header { 
+      background: var(--bg-primary); 
+      border: 1px solid var(--border-color); 
+      border-radius: var(--border-radius); 
+      padding: 1.5rem; 
+      margin-bottom: 1.5rem; 
+      box-shadow: var(--shadow-sm); 
+    }
+    .page-header h2 { 
+      font-size: 1.5rem; 
+      font-weight: 700; 
+      margin-bottom: .5rem; 
+      color: var(--text-primary); 
+    }
+    .page-header p { 
+      color: var(--text-secondary); 
+      font-size: .95rem; 
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-logo">MessMate</h1>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="admin_dashboard.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Admin Dashboard</span>
+      </a>
+      <a href="admin_attendance.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <polyline points="17 11 19 13 23 9"></polyline>
+        </svg>
+        <span>Attendance</span>
+      </a>
+      <a href="admin_feedback.html" class="nav-item active">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Feedback</span>
+      </a>
+      <a href="admin_settings.html" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="index.html" class="nav-item logout">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <main class="container">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h2>Feedback Management</h2>
+        <p>Manage and respond to student feedback submissions</p>
+      </div>
+
+      <!-- Feedback Management Section -->
+      <div class="section">
+        <h3>All Feedback Submissions</h3>
+        <div class="toolbar">
+          <button class="btn-primary btn" id="addFeedback">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Feedback
+          </button>
+          <button class="btn btn" id="refreshFeedback">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+        <div style="overflow:auto;">
+          <table class="table" id="feedbackTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Student Name</th>
+                <th>Type</th>
+                <th>Subject</th>
+                <th>Rating</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div id="feedbackModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="feedbackModalTitle">Add Feedback</h3>
+        <button class="modal-close" id="closeFeedbackModal">&times;</button>
+      </div>
+      <form id="feedbackForm">
+        <input type="hidden" id="feedbackId">
+        <div class="form-field">
+          <label for="feedbackStudentId">Student *</label>
+          <select id="feedbackStudentId" required>
+            <option value="">Select Student</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="feedbackType">Feedback Type *</label>
+          <select id="feedbackType" required>
+            <option value="food_quality">Food Quality</option>
+            <option value="service">Service</option>
+            <option value="cleanliness">Cleanliness</option>
+            <option value="general">General</option>
+            <option value="suggestion">Suggestion</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="feedbackSubject">Subject *</label>
+          <input type="text" id="feedbackSubject" placeholder="Brief subject..." required>
+        </div>
+        <div class="form-field">
+          <label for="feedbackMessage">Message *</label>
+          <textarea id="feedbackMessage" placeholder="Detailed feedback message..." required></textarea>
+        </div>
+        <div class="form-field">
+          <label for="feedbackRating">Rating (1-5)</label>
+          <input type="number" id="feedbackRating" min="1" max="5" placeholder="Optional rating">
+        </div>
+        <div class="form-field">
+          <label for="feedbackStatus">Status *</label>
+          <select id="feedbackStatus" required>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="cancelFeedbackBtn">Cancel</button>
+          <button type="submit" class="btn-primary btn" id="saveFeedbackBtn">Save Feedback</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // ========== FEEDBACK MANAGEMENT ==========
+    let feedbackList = [];
+    let usersList = [];
+
+    // Load all users for dropdowns
+    async function loadUsers() {
+      try {
+        const res = await fetch('/_users');
+        const data = await res.json();
+        usersList = data.filter(u => u.role === 'user');
+        
+        // Populate dropdowns
+        const selects = [
+          document.getElementById('feedbackStudentId')
+        ];
+        
+        selects.forEach(select => {
+          if (select) {
+            select.innerHTML = '<option value="">Select Student</option>';
+            usersList.forEach(user => {
+              const opt = document.createElement('option');
+              opt.value = user.id;
+              opt.textContent = `${user.full_name || user.username} (${user.email})`;
+              select.appendChild(opt);
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
+
+    // Load feedback
+    async function loadFeedback() {
+      try {
+        const res = await fetch('/api/admin/feedback');
+        const data = await res.json();
+        
+        if (data.success) {
+          feedbackList = data.feedback;
+          displayFeedback(data.feedback);
+        }
+      } catch (err) {
+        console.error('Error loading feedback:', err);
+      }
+    }
+
+    // Display feedback in table
+    function displayFeedback(feedback) {
+      const tbody = document.querySelector('#feedbackTable tbody');
+      tbody.innerHTML = '';
+      
+      if (feedback.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-secondary);">No feedback entries found</td></tr>';
+        return;
+      }
+      
+      feedback.forEach(item => {
+        const tr = document.createElement('tr');
+        const date = new Date(item.created_at).toLocaleDateString();
+        const statusClass = item.status === 'resolved' ? 'status-paid' : item.status === 'reviewed' ? 'status-pending' : 'status-failed';
+        const rating = item.rating ? '⭐'.repeat(item.rating) : 'N/A';
+        
+        tr.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.student_name || item.full_name || item.username || 'N/A'}</td>
+          <td>${item.feedback_type.replace('_', ' ')}</td>
+          <td>${item.subject}</td>
+          <td>${rating}</td>
+          <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+          <td>${date}</td>
+          <td>
+            <button class="btn" style="padding: .25rem .5rem; font-size: .85rem;" onclick="viewFeedback(${item.id})">View</button>
+            <button class="btn" style="padding: .25rem .5rem; font-size: .85rem;" onclick="editFeedback(${item.id})">Edit</button>
+            <button class="btn-danger btn" style="padding: .25rem .5rem; font-size: .85rem;" onclick="deleteFeedback(${item.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // View feedback details
+    window.viewFeedback = async function(id) {
+      const item = feedbackList.find(f => f.id === id);
+      if (item) {
+        const msg = `
+Student: ${item.student_name || item.full_name || item.username}
+Type: ${item.feedback_type.replace('_', ' ')}
+Subject: ${item.subject}
+Rating: ${item.rating ? '⭐'.repeat(item.rating) : 'N/A'}
+Status: ${item.status}
+Date: ${new Date(item.created_at).toLocaleString()}
+
+Message:
+${item.message}
+        `;
+        alert(msg);
+      }
+    };
+
+    // Edit feedback
+    window.editFeedback = async function(id) {
+      try {
+        const res = await fetch(`/api/admin/feedback/${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const item = data.feedback;
+          document.getElementById('feedbackModalTitle').textContent = 'Edit Feedback';
+          document.getElementById('feedbackId').value = item.id;
+          document.getElementById('feedbackStudentId').value = item.user_id;
+          document.getElementById('feedbackType').value = item.feedback_type;
+          document.getElementById('feedbackSubject').value = item.subject;
+          document.getElementById('feedbackMessage').value = item.message;
+          document.getElementById('feedbackRating').value = item.rating || '';
+          document.getElementById('feedbackStatus').value = item.status;
+          document.getElementById('feedbackModal').classList.add('active');
+        }
+      } catch (err) {
+        console.error('Error loading feedback:', err);
+        alert('Failed to load feedback');
+      }
+    };
+
+    // Delete feedback
+    window.deleteFeedback = async function(id) {
+      if (!confirm('Are you sure you want to delete this feedback?')) return;
+      
+      try {
+        const res = await fetch(`/api/admin/feedback/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        if (data.success) {
+          loadFeedback();
+        } else {
+          alert('Failed to delete feedback');
+        }
+      } catch (err) {
+        console.error('Error deleting feedback:', err);
+        alert('Failed to delete feedback');
+      }
+    };
+
+    // Feedback modal handling
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackForm = document.getElementById('feedbackForm');
+    
+    document.getElementById('addFeedback').addEventListener('click', () => {
+      document.getElementById('feedbackModalTitle').textContent = 'Add Feedback';
+      feedbackForm.reset();
+      document.getElementById('feedbackId').value = '';
+      feedbackModal.classList.add('active');
+    });
+    
+    document.getElementById('closeFeedbackModal').addEventListener('click', () => {
+      feedbackModal.classList.remove('active');
+    });
+    
+    document.getElementById('cancelFeedbackBtn').addEventListener('click', () => {
+      feedbackModal.classList.remove('active');
+    });
+    
+    feedbackModal.addEventListener('click', (e) => {
+      if (e.target === feedbackModal) {
+        feedbackModal.classList.remove('active');
+      }
+    });
+
+    // Save feedback
+    feedbackForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('feedbackId').value;
+      const user_id = document.getElementById('feedbackStudentId').value;
+      const student = usersList.find(u => u.id == user_id);
+      
+      const feedbackData = {
+        user_id: user_id,
+        student_name: student ? (student.full_name || student.username) : '',
+        feedback_type: document.getElementById('feedbackType').value,
+        subject: document.getElementById('feedbackSubject').value,
+        message: document.getElementById('feedbackMessage').value,
+        rating: document.getElementById('feedbackRating').value || null,
+        status: document.getElementById('feedbackStatus').value
+      };
+      
+      try {
+        const url = id ? `/api/admin/feedback/${id}` : '/api/admin/feedback';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(feedbackData)
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          feedbackModal.classList.remove('active');
+          loadFeedback();
+        } else {
+          alert('Failed to save feedback: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Error saving feedback:', err);
+        alert('Failed to save feedback');
+      }
+    });
+
+    document.getElementById('refreshFeedback').addEventListener('click', loadFeedback);
+
+    // Initial load
+    loadUsers();
+    loadFeedback();
+
+    // Logout: clear auth cookie then redirect
+    document.querySelector('.sidebar-footer .logout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await fetch('/logout', { method: 'POST' }); } catch {}
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
