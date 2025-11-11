@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Signup Page</title>
+    <link rel="stylesheet" href="signup.css">
+</head>
+<body>
+    <div class="signup-container">
+    <center><h1>Sign up Form</h1></center>
+  <form id="signupForm">
+      <label for="fullname">Full Name</label><br>
+  <input type="text" id="fullname" placeholder="Enter your name" required><br><br>
+
+      <label for="email">Email id</label><br>
+  <input type="email" id="email" placeholder="Enter your email id" required><br><br>
+
+      <label for="password">Password</label><br>
+  <input type="password" id="password" placeholder="Enter password" required><br><br>
+
+  <label for="confirm-password">Confirm Password</label><br>
+  <input type="password" id="confirm-password" placeholder="Re-enter password" required><br><br>
+
+
+  <center><button type="submit">Sign Up</button>
+  <p>Already have an account? <a href="index.html">Login</a></p><br>
+     </center>
+    </form>
+  </div>
+  <script>
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('fullname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    if (password !== confirm) {
+      alert('Passwords do not match');
+      return;
+    }
+    try {
+      const res = await fetch('/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, password })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        alert('Signup successful. Please login.');
+        window.location.href = 'index.html';
+      } else {
+        alert('Signup failed: ' + (data && data.error ? data.error : 'unknown_error'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Server error. Please try again.');
+    }
+  });
+  </script>
+</body>
+</html>

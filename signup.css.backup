@@ -1,0 +1,31 @@
+body {
+    font-family: Arial, sans-serif;
+    background-image: url(bg_signup.png);
+    background-position: cover;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.signup-container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  width: 350px;
+  text-align: left;
+  
+}
+.signup-container h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+form label {
+  text-align: left;
+  margin-bottom: 6px;
+
+  color: #444;
+  margin-left: 0;
+}
